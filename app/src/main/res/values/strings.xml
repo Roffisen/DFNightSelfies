@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <string name="app_name">DF Night Selfies</string>
+    <string name="cant_get_front_camera">Cannot obtain front camera</string>
+    <string name="tap_the_screen">Tap the screen to take a selfie!</string>
+    <string name="application_will_terminate">Application will be closed now</string>
+    <string name="save">Save</string>
+    <string name="share">Share</string>
+    <string name="discard">Discard</string>
+    <string name="send_to">Share</string>
+
+</resources>

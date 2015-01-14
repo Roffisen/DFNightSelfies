@@ -1,0 +1,101 @@
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    tools:context=".DFNightSelfiesMainActivity">
+
+    <LinearLayout
+        android:id="@+id/main_layout"
+        android:orientation="vertical"
+        android:layout_width="fill_parent"
+        android:layout_height="fill_parent"
+        android:layout_gravity="center"
+        android:gravity="center_horizontal">
+
+        <!-- 25% space on top -->
+        <FrameLayout
+            android:id="@+id/empty_space_top"
+            android:layout_width="fill_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1">
+        </FrameLayout>
+
+        <LinearLayout
+            android:baselineAligned="false"
+            android:id="@+id/vertically_centred_layout"
+            android:layout_width="fill_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1">
+
+            <!-- 25% space on left -->
+            <FrameLayout
+                android:id="@+id/empty_space_left"
+                android:layout_width="0dp"
+                android:layout_height="fill_parent"
+                android:layout_weight="1">
+            </FrameLayout>
+
+            <!-- frame containing camera preview -->
+            <FrameLayout
+                android:id="@+id/camera_preview"
+                android:layout_width="0dp"
+                android:layout_height="fill_parent"
+                android:layout_weight="1">
+            </FrameLayout>
+
+            <!-- 25% space on right -->
+            <FrameLayout
+                android:id="@+id/empty_space_right"
+                android:layout_width="0dp"
+                android:layout_height="fill_parent"
+                android:layout_weight="1">
+            </FrameLayout>
+        </LinearLayout>
+
+        <!-- 25% space on bottom -->
+        <LinearLayout
+            android:id="@+id/buttons"
+            android:layout_width="fill_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1"
+            android:visibility="invisible"
+            android:layout_marginBottom="10dp">
+            <ImageButton
+                android:id="@+id/share"
+                android:layout_width="0dp"
+                android:layout_weight="1"
+                android:layout_height="wrap_content"
+                android:layout_gravity="bottom"
+                android:background="#FFFFFF"
+                android:src="@drawable/share"
+                android:contentDescription="@string/share"/>
+            <ImageButton
+                android:id="@+id/save"
+                android:layout_width="0dp"
+                android:layout_weight="1"
+                android:layout_height="wrap_content"
+                android:layout_gravity="bottom"
+                android:background="#FFFFFF"
+                android:src="@drawable/save"
+                android:contentDescription="@string/save"/>
+            <ImageButton
+                android:id="@+id/discard"
+                android:layout_width="0dp"
+                android:layout_weight="1"
+                android:layout_height="wrap_content"
+                android:layout_gravity="bottom"
+                android:background="#FFFFFF"
+                android:src="@drawable/discard"
+                android:contentDescription="@string/discard"/>
+            </LinearLayout>
+    </LinearLayout>
+
+    <FrameLayout
+        android:id="@+id/white_frame"
+        android:layout_width="fill_parent"
+        android:layout_height="fill_parent"
+        android:background="#ffffff"
+        android:visibility="invisible">
+
+    </FrameLayout>
+</FrameLayout>
