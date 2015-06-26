@@ -9,7 +9,8 @@ import android.net.Uri;
 public class SingleMediaScanner implements MediaScannerConnectionClient {
 
 private MediaScannerConnection mMs;
-private File mFile;
+File mFile;
+Uri shareUri;
 
 public SingleMediaScanner(Context context, File f) {
     mFile = f;
@@ -24,6 +25,7 @@ public void onMediaScannerConnected() {
 
 @Override
 public void onScanCompleted(String path, Uri uri) {
+    shareUri = uri;
     mMs.disconnect();
 }
 

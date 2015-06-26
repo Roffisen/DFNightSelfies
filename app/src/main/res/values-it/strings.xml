@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="application_will_terminate">L\'applicazione verrà chiusa</string>
+    <string name="cant_get_front_camera">Impossibile ottenere la fotocamere frontale</string>
+    <string name="discard">Annulla</string>
+    <string name="save">Salva</string>
+    <string name="share">Condividi</string>
+    <string name="welcome">Benvenuto!</string>
+    <string name="welcome_text">Benvenuto su DF Night Selfies!\nTocca lo schermo per scattare un selfie.\nUsa i tasti volume per regolare la dimensione dell\'anteprima.\nScorri da destra verso sinistra per vedere le tue foto.</string>
+</resources>

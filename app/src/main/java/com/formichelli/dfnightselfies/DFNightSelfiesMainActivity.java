@@ -5,15 +5,21 @@ import android.app.AlertDialog;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
+import android.content.SharedPreferences;
+import android.content.pm.ActivityInfo;
 import android.content.pm.PackageManager;
+import android.graphics.PixelFormat;
 import android.hardware.Camera;
+import android.hardware.SensorManager;
 import android.os.AsyncTask;
 import android.os.Bundle;
 import android.os.Environment;
 import android.support.annotation.NonNull;
 import android.util.Log;
+import android.view.Display;
 import android.view.KeyEvent;
 import android.view.MotionEvent;
+import android.view.OrientationEventListener;
 import android.view.Surface;
 import android.view.SurfaceHolder;
 import android.view.SurfaceView;
@@ -32,20 +38,25 @@ import java.io.IOException;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.List;
+import java.util.Locale;
 
 @SuppressWarnings("deprecation")
 public class DFNightSelfiesMainActivity extends Activity implements View.OnClickListener, View.OnTouchListener {
     private final static String TAG = "DFNightSelfies";
+    private final static double SCALE_FACTOR = 1.5;
+    private final static int MAX_SCALE = 1;
+    private final static int MIN_SCALE = -2;
 
-    LinearLayout cameraPreviewHeightController, mainLayout, buttons;
-    FrameLayout cameraPreview, whiteFrame;
-    SurfaceView cameraSurface;
+    SharedPreferences mSharedPreferences;
+    LinearLayout buttons;
+    FrameLayout cameraPreview, mainLayout;
+    CameraPreview cameraSurface;
+    SingleMediaScanner mediaScanner;
+    OrientationEventListener orientationEventListener;
 
-    int maxHeight = 0, maxWidth = 0;
+    int scale;
 
     float x, y;
-
-    String cacheFileURI;
 
     Camera mCamera;
 
@@ -57,62 +68,138 @@ public class DFNightSelfiesMainActivity extends Activity implements View.OnClick
 
         setContentView(R.layout.activity_dfnight_selfies_main);
 
-        cameraPreviewHeightController = (LinearLayout) findViewById(R.id.vertically_centred_layout);
-
-        whiteFrame = (FrameLayout) findViewById(R.id.white_frame);
-        whiteFrame.setOnClickListener(null);
-        whiteFrame.setOnTouchListener(null);
-
         cameraPreview = (FrameLayout) findViewById(R.id.camera_preview);
-        cameraPreview.getViewTreeObserver().addOnGlobalLayoutListener(new ViewTreeObserver.OnGlobalLayoutListener() {
-            @Override
-            public void onGlobalLayout() {
-                if (mCamera == null) {
-                    if (!initializeCamera())
-                        exitWithError(0);
 
-                    Toast.makeText(DFNightSelfiesMainActivity.this, getString(R.string.tap_the_screen), Toast.LENGTH_LONG).show();
-                }
-            }
-        });
-
-        mainLayout = (LinearLayout) findViewById(R.id.main_layout);
+        mainLayout = (FrameLayout) findViewById(R.id.main_layout);
         mainLayout.setOnClickListener(this);
         mainLayout.setOnTouchListener(this);
 
         buttons = (LinearLayout) findViewById(R.id.buttons);
         for (int i = 0; i < buttons.getChildCount(); i++)
             buttons.getChildAt(i).setOnClickListener(this);
-    }
 
+        // The first time show a welcome dialog, the other times initialize camera as soon as the camera preview frame is ready
+        mSharedPreferences = getSharedPreferences("DFNightSelfies", MODE_PRIVATE);
+        if (mSharedPreferences.getInt("lastRunVersion", 0) < 7) {
+            new AlertDialog.Builder(DFNightSelfiesMainActivity.this).setTitle(R.string.welcome).setMessage(R.string.welcome_text).setNeutralButton("OK", new DialogInterface.OnClickListener() {
+                @Override
+                public void onClick(DialogInterface dialog, int which) {
+                    int currentVersion;
+                    try {
+                        currentVersion = getPackageManager().getPackageInfo(getPackageName(), 0).versionCode;
+                    } catch (PackageManager.NameNotFoundException e) {
+                        currentVersion = 0;
+                    }
+                    mSharedPreferences.edit().putInt("lastRunVersion", currentVersion).apply();
+
+                    if (!initializeCamera())
+                        exitWithError(R.string.cant_get_front_camera);
+                }
+            }).show();
+        } else {
+            cameraPreview.getViewTreeObserver().addOnGlobalLayoutListener(new ViewTreeObserver.OnGlobalLayoutListener() {
+                @Override
+                public void onGlobalLayout() {
+                    if (mCamera == null)
+                        if (!initializeCamera())
+                            exitWithError(R.string.cant_get_front_camera);
+                }
+            });
+        }
+
+        scale = mSharedPreferences.getInt("scaleFactor", 0);
+
+        orientationEventListener = new OrientationEventListener(this, SensorManager.SENSOR_DELAY_UI) {
+            Display display = ((WindowManager) getSystemService(WINDOW_SERVICE)).getDefaultDisplay();
+            int lastRotation = display.getRotation();
+
+            @Override
+            public void onOrientationChanged(int orientation) {
+                synchronized (this) {
+                    int rotation = display.getRotation();
+                    if (lastRotation == rotation)
+                        return;
+
+                    int displayOrientation = -1, cameraRotation = -1;
+                    switch (rotation) {
+                        case Surface.ROTATION_0: // portrait
+                            if (lastRotation != Surface.ROTATION_180)
+                                break;
+                            displayOrientation = 90;
+                            cameraRotation = 270;
+                            break;
+
+                        case Surface.ROTATION_180:  // portrait (upside down)
+                            if (lastRotation != Surface.ROTATION_0)
+                                break;
+
+                            displayOrientation = 270;
+                            cameraRotation = 90;
+                            break;
+
+                        case Surface.ROTATION_90: // landscape (down at right)
+                            if (lastRotation != Surface.ROTATION_270)
+                                break;
+
+                            displayOrientation = 0;
+                            cameraRotation = 0;
+                            break;
+
+                        case Surface.ROTATION_270: // landscape (down at left)
+                            if (lastRotation != Surface.ROTATION_90)
+                                break;
+
+                            displayOrientation = 180;
+                            cameraRotation = 180;
+                            break;
+                    }
+
+                    lastRotation = rotation;
+
+                    if (displayOrientation == -1)
+                        return;
+
+                    mCamera.setDisplayOrientation(displayOrientation);
+                    Camera.Parameters mCameraParameters = mCamera.getParameters();
+                    mCameraParameters.setRotation(cameraRotation);
+                    mCamera.setParameters(mCameraParameters);
+                }
+            }
+        };
+    }
 
     @Override
     protected void onStart() {
         super.onStart();
 
-        if (buttons.getVisibility() != View.VISIBLE)
+        if (buttons.getVisibility() == View.INVISIBLE)
             if (mCamera != null)
                 if (!initializeCamera())
-                    exitWithError(0);
-    }
+                    exitWithError(R.string.cant_get_front_camera);
 
-    @Override
-    protected void onPause() {
-        super.onPause();
-
-        if (buttons.getVisibility() != View.VISIBLE)
-            if (mCamera != null)
-                mCamera.stopPreview();
+        orientationEventListener.enable();
     }
 
     @Override
     protected void onStop() {
         super.onStop();
 
-        if (mCamera != null) {
-            mCamera.release();
-            cameraPreview.removeAllViews();
+        if (buttons.getVisibility() == View.INVISIBLE) {
+            if (mCamera != null) {
+                mCamera.stopPreview();
+                mCamera.release();
+            }
         }
+
+        orientationEventListener.disable();
+    }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+
+        if (mCamera != null)
+            mCamera.release();
     }
 
     private void setupWindow() {
@@ -148,6 +235,7 @@ public class DFNightSelfiesMainActivity extends Activity implements View.OnClick
                     resizePreview();
 
                     cameraSurface = new CameraPreview(this, mCamera);
+                    cameraPreview.removeAllViews();
                     cameraPreview.addView(cameraSurface);
                     return true;
                 } catch (RuntimeException e) {
@@ -165,54 +253,106 @@ public class DFNightSelfiesMainActivity extends Activity implements View.OnClick
         int cameraPreviewWidth = cameraPreview.getWidth();
         int cameraPreviewHeight = cameraPreview.getHeight();
 
-        if (enlarge && cameraPreviewHeight * 2 > maxHeight && cameraPreviewWidth * 2 > maxWidth)
-            return;
+        if (enlarge) {
+            if (scale == MAX_SCALE)
+                return;
+        } else {
+            if (scale == MIN_SCALE)
+                return;
+        }
 
-        LinearLayout.LayoutParams cameraPreviewParams = (LinearLayout.LayoutParams) cameraPreview.getLayoutParams();
+        FrameLayout.LayoutParams cameraPreviewParams = (FrameLayout.LayoutParams) cameraPreview.getLayoutParams();
         cameraPreviewParams.width = (int) (cameraPreviewWidth * scaleFactor(enlarge));
         cameraPreviewParams.height = (int) (cameraPreviewHeight * scaleFactor(enlarge));
-        cameraPreviewParams.weight = 0;
         cameraPreview.setLayoutParams(cameraPreviewParams);
-        cameraPreviewHeightController.setLayoutParams(cameraPreviewParams);
+
+        scale += enlarge ? 1 : -1;
+        mSharedPreferences.edit().putInt("scaleFactor", scale).apply();
     }
 
     double scaleFactor(boolean enlarge) {
-        return (enlarge ? 1.5 : 1 / 1.5);
+        return (enlarge ? SCALE_FACTOR : 1 / SCALE_FACTOR);
     }
 
     private void resizePreview() {
         List<Camera.Size> sizes = mCamera.getParameters().getSupportedPreviewSizes();
 
-        int cameraPreviewWidth = cameraPreview.getWidth();
-        int cameraPreviewHeight = cameraPreview.getHeight();
-
-        maxWidth = cameraPreviewWidth * 2;
-        maxHeight = cameraPreviewHeight * 2;
+        Display display = getWindowManager().getDefaultDisplay();
+        int cameraPreviewWidth = display.getWidth() / 3;
+        int cameraPreviewHeight = display.getHeight() / 3;
 
         Camera.Size bestSize = getBestSize(sizes);
 
-        LinearLayout.LayoutParams cameraPreviewParams = null;
+        boolean portrait = true;
+        int displayOrientation = 0, cameraRotation = 0;
         switch (((WindowManager) getSystemService(WINDOW_SERVICE)).getDefaultDisplay().getRotation()) {
             case Surface.ROTATION_0: // portrait
-            case Surface.ROTATION_180: // portrait (upside down)
-                cameraPreviewParams = (LinearLayout.LayoutParams) cameraPreview.getLayoutParams();
-                cameraPreviewParams.width = (int) (((double) cameraPreviewHeight) / bestSize.width * bestSize.height);
-                cameraPreviewParams.height = cameraPreview.getHeight();
+                portrait = true;
+                displayOrientation = 90;
+                cameraRotation = 270;
+                break;
+
+            case Surface.ROTATION_180:  // portrait (upside down)
+                portrait = true;
+                displayOrientation = 270;
+                cameraRotation = 90;
                 break;
 
             case Surface.ROTATION_90: // landscape (down at left)
+                portrait = false;
+                displayOrientation = 0;
+                cameraRotation = 0;
+                break;
+
             case Surface.ROTATION_270: // landscape (down at right)
-                cameraPreviewParams = (LinearLayout.LayoutParams) cameraPreviewHeightController.getLayoutParams();
-                cameraPreviewParams.width = cameraPreviewWidth;
-                cameraPreviewParams.height = (int) (((double) cameraPreviewWidth) / bestSize.width * bestSize.height);
+                portrait = false;
+                displayOrientation = 180;
+                cameraRotation = 180;
                 break;
         }
 
-        if (cameraPreviewParams != null) {
-            cameraPreviewParams.weight = 0;
-            cameraPreview.setLayoutParams(cameraPreviewParams);
-            cameraPreviewHeightController.setLayoutParams(cameraPreviewParams);
+        // rotate preview
+        mCamera.setDisplayOrientation(displayOrientation);
+
+        // rotate taken photo
+        Camera.Parameters mCameraParameters = mCamera.getParameters();
+        mCameraParameters.setRotation(cameraRotation);
+        mCamera.setParameters(mCameraParameters);
+
+        FrameLayout.LayoutParams cameraPreviewParams = (FrameLayout.LayoutParams) cameraPreview.getLayoutParams();
+        if (portrait) {
+            cameraPreviewParams.width = (int) (((double) cameraPreviewHeight) / bestSize.width * bestSize.height);
+            cameraPreviewParams.height = cameraPreviewHeight;
+        } else {
+            cameraPreviewParams.width = cameraPreviewWidth;
+            cameraPreviewParams.height = (int) (((double) cameraPreviewWidth) / bestSize.width * bestSize.height);
         }
+
+        float scaleFactor = 1;
+        int lastScale = scale;
+        while (lastScale != 0) {
+            if (lastScale > 0) {
+                scaleFactor *= SCALE_FACTOR;
+                lastScale--;
+            }
+            else {
+                scaleFactor /= SCALE_FACTOR;
+                lastScale++;
+            }
+        }
+
+        cameraPreviewParams.width *= scaleFactor;
+        cameraPreviewParams.height *= scaleFactor;
+        cameraPreview.setLayoutParams(cameraPreviewParams);
+
+        mCameraParameters = mCamera.getParameters();
+        mCameraParameters.setPictureFormat(PixelFormat.JPEG);
+        bestSize = getBestSize(mCameraParameters.getSupportedPreviewSizes());
+        mCameraParameters.setPreviewSize(bestSize.width, bestSize.height);
+        bestSize = getBestSize(mCameraParameters.getSupportedPictureSizes());
+        mCameraParameters.setPictureSize(bestSize.width, bestSize.height);
+        mCamera.setParameters(mCameraParameters);
+
     }
 
     private Camera.Size getBestSize(List<Camera.Size> sizes) {
@@ -248,7 +388,7 @@ public class DFNightSelfiesMainActivity extends Activity implements View.OnClick
     private void exitWithError(int errorMessageId) {
         final AlertDialog errorDialog = new AlertDialog.Builder(this)
                 .setTitle("Error")
-                .setMessage(getString(errorMessageId) + "\n" + getString(R.string.application_will_terminate))
+                .setMessage(getString(errorMessageId) + ".\n" + getString(R.string.application_will_terminate) + ".")
                 .setPositiveButton("OK", new DialogInterface.OnClickListener() {
                     @Override
                     public void onClick(DialogInterface dialog, int which) {
@@ -281,6 +421,7 @@ public class DFNightSelfiesMainActivity extends Activity implements View.OnClick
             mHolder.setType(SurfaceHolder.SURFACE_TYPE_PUSH_BUFFERS);
         }
 
+        @Override
         public void surfaceCreated(SurfaceHolder holder) {
             // The Surface has been created, now tell the camera where to draw the preview.
             try {
@@ -291,68 +432,14 @@ public class DFNightSelfiesMainActivity extends Activity implements View.OnClick
             }
         }
 
+        @Override
         public void surfaceDestroyed(SurfaceHolder holder) {
-            // empty. Take care of releasing the Camera preview in your activity.
+            // camera release is managed by activity
         }
 
+        @Override
         public void surfaceChanged(SurfaceHolder holder, int format, int w, int h) {
-            // If your preview can change or rotate, take care of those events here.
-            // Make sure to stop the preview before resizing or reformatting it.
-
-            if (mHolder.getSurface() == null){
-                // preview surface does not exist
-                return;
-            }
-
-            // stop preview before making changes
-            try {
-                mCamera.stopPreview();
-            } catch (Exception e){
-                // ignore: tried to stop a non-existent preview
-            }
-
-            int displayOrientation = 0, cameraRotation = 0;
-            switch (((WindowManager) getSystemService(WINDOW_SERVICE)).getDefaultDisplay().getRotation()) {
-                case Surface.ROTATION_0: // portrait
-                    displayOrientation = 90;
-                    cameraRotation = 270;
-                    break;
-
-                case Surface.ROTATION_90: // landscape (down at left)
-                    displayOrientation = 0;
-                    cameraRotation = 0;
-                    break;
-
-                case Surface.ROTATION_180: // portrait (upside donw)
-                    displayOrientation = 270;
-                    cameraRotation = 90;
-                    break;
-
-                case Surface.ROTATION_270: // landscape (down at right)
-                    displayOrientation = 180;
-                    cameraRotation = 180;
-                    break;
-            }
-
-            // rotate preview
-            mCamera.setDisplayOrientation(displayOrientation);
-
-            // rotate taken photo
-            Camera.Parameters mCameraParameters = mCamera.getParameters();
-            mCameraParameters.setRotation(cameraRotation);
-            mCamera.setParameters(mCameraParameters);
-
-            // set preview size and make any resize, rotate or
-            // reformatting changes here
-
-            // start preview with new settings
-            try {
-                mCamera.setPreviewDisplay(mHolder);
-                mCamera.startPreview();
-
-            } catch (Exception e){
-                log("Error starting camera preview: " + e.getMessage());
-            }
+            // Surface can't change
         }
     }
 
@@ -363,13 +450,13 @@ public class DFNightSelfiesMainActivity extends Activity implements View.OnClick
                 @Override
                 protected void onPreExecute() {
                     super.onPreExecute();
-                    whiteFrame.setVisibility(View.VISIBLE);
+                    // TODO whiteFrame.setVisibility(View.VISIBLE);
                 }
 
                 @Override
                 protected void onPostExecute(Void aVoid) {
                     super.onPostExecute(aVoid);
-                    whiteFrame.setVisibility(View.INVISIBLE);
+                    // TODO whiteFrame.setVisibility(View.INVISIBLE);
                 }
 
                 @Override
@@ -404,6 +491,9 @@ public class DFNightSelfiesMainActivity extends Activity implements View.OnClick
             } catch (IOException e) {
                 Log.d(TAG, "Error accessing file: " + e.getMessage());
             }
+
+
+            mediaScanner = new SingleMediaScanner(DFNightSelfiesMainActivity.this, pictureFile);
             buttons.setVisibility(View.VISIBLE);
         }
 
@@ -439,35 +529,60 @@ public class DFNightSelfiesMainActivity extends Activity implements View.OnClick
     public void onClick(View v) {
         switch (v.getId()) {
             case R.id.main_layout:
-                cacheFileURI = null;
-                mCamera.takePicture(shutterCallback, null, pictureTakenCallback);
+                mediaScanner = null;
                 mainLayout.setOnClickListener(null);
                 mainLayout.setOnTouchListener(null);
+                switch (((WindowManager) getSystemService(WINDOW_SERVICE)).getDefaultDisplay().getRotation()) {
+                    case Surface.ROTATION_0: // portrait
+                        setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT);
+                        break;
+
+                    case Surface.ROTATION_180:  // portrait (upside down)
+                        setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_REVERSE_PORTRAIT);
+                        break;
+
+                    case Surface.ROTATION_90: // landscape (down at left)
+                        setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE);
+                        break;
+
+                    case Surface.ROTATION_270: // landscape (down at right)
+                        setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_REVERSE_LANDSCAPE);
+                        break;
+                }
+                mCamera.takePicture(shutterCallback, null, pictureTakenCallback);
+
                 break;
 
             case R.id.save:
-                new SingleMediaScanner(this, new File(cacheFileURI));
                 restartPreview();
+                setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_SENSOR);
                 break;
 
             case R.id.share:
                 Intent shareIntent = new Intent();
                 shareIntent.setAction(Intent.ACTION_SEND);
-                shareIntent.putExtra(Intent.EXTRA_STREAM, cacheFileURI);
-                shareIntent.setType("image/jpeg");
-                startActivity(Intent.createChooser(shareIntent, getResources().getText(R.string.send_to)));
+                shareIntent.putExtra(Intent.EXTRA_STREAM, mediaScanner.shareUri);
+                shareIntent.setType("image/*");
+                startActivityForResult(Intent.createChooser(shareIntent, getResources().getText(R.string.share)), 0);
+                setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_SENSOR);
                 break;
 
             case R.id.discard:
-                if (!new File(cacheFileURI).delete())
-                    log("Cannot delete cached file: " + cacheFileURI);
-                restartPreview();
+                discard();
+                setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_SENSOR);
                 break;
         }
     }
 
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        if (resultCode == RESULT_CANCELED)
+            if (mCamera != null)
+                restartPreview();
+    }
+
     private void restartPreview() {
-        cacheFileURI = null;
+        mediaScanner = null;
         mainLayout.setOnClickListener(this);
         mainLayout.setOnTouchListener(this);
         buttons.setVisibility(View.INVISIBLE);
@@ -478,12 +593,21 @@ public class DFNightSelfiesMainActivity extends Activity implements View.OnClick
     @Override
     public boolean onKeyUp(int keyCode, @NonNull KeyEvent event) {
         switch (keyCode) {
+            case KeyEvent.KEYCODE_BACK:
+                if (buttons.getVisibility() == View.VISIBLE)
+                    discard();
+                else
+                    finish();
+                return true;
+
             case KeyEvent.KEYCODE_VOLUME_DOWN:
-                resizePreview(false);
+                if (buttons.getVisibility() != View.VISIBLE)
+                    resizePreview(false);
                 return true;
 
             case KeyEvent.KEYCODE_VOLUME_UP:
-                resizePreview(true);
+                if (buttons.getVisibility() != View.VISIBLE)
+                    resizePreview(true);
                 return true;
         }
 
@@ -519,12 +643,16 @@ public class DFNightSelfiesMainActivity extends Activity implements View.OnClick
                 if (!mediaStorageDir.mkdirs())
                     throw new IOException();
 
-            // Create a media file name
-            cacheFileURI = mediaStorageDir.getPath() + File.separator + "IMG_"+ new SimpleDateFormat("yyyyMMdd_HHmmss").format(new Date()) + ".jpg";
-
-            return new File(cacheFileURI);
+            // Create the file
+            return new File(mediaStorageDir.getPath() + File.separator + "IMG_"+ new SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(new Date()) + ".jpg");
         } catch(IOException e) {
             return null;
         }
+    }
+
+    private void discard() {
+        if (getContentResolver().delete(mediaScanner.shareUri, null, null) == 0)
+            log("Cannot delete cached file: " + mediaScanner.mFile.getAbsolutePath());
+        restartPreview();
     }
 }
