@@ -8,10 +8,12 @@ import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.ActivityInfo;
 import android.content.pm.PackageManager;
+import android.graphics.Color;
 import android.graphics.PixelFormat;
 import android.hardware.Camera;
 import android.hardware.SensorManager;
 import android.os.AsyncTask;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.Environment;
 import android.support.annotation.NonNull;
@@ -31,6 +33,8 @@ import android.widget.FrameLayout;
 import android.widget.LinearLayout;
 import android.widget.Toast;
 
+import com.rarepebble.colorpicker.ColorPickerView;
+
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
@@ -49,12 +53,13 @@ public class DFNightSelfiesMainActivity extends Activity implements View.OnClick
 
     SharedPreferences mSharedPreferences;
     LinearLayout buttons;
-    FrameLayout cameraPreview, mainLayout;
+    FrameLayout cameraPreview, mainLayout, shutterFrame;
     CameraPreview cameraSurface;
     SingleMediaScanner mediaScanner;
     OrientationEventListener orientationEventListener;
 
     int scale;
+    int color;
 
     float x, y;
 
@@ -73,6 +78,8 @@ public class DFNightSelfiesMainActivity extends Activity implements View.OnClick
         mainLayout = (FrameLayout) findViewById(R.id.main_layout);
         mainLayout.setOnClickListener(this);
         mainLayout.setOnTouchListener(this);
+
+        shutterFrame = (FrameLayout) findViewById(R.id.shutter_frame);
 
         buttons = (LinearLayout) findViewById(R.id.buttons);
         for (int i = 0; i < buttons.getChildCount(); i++)
@@ -109,6 +116,14 @@ public class DFNightSelfiesMainActivity extends Activity implements View.OnClick
 
         scale = mSharedPreferences.getInt("scaleFactor", 0);
 
+        color = mSharedPreferences.getInt("color", Color.WHITE);
+        mainLayout.setBackgroundColor(color);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+            final Window window = getWindow();
+            window.setStatusBarColor(color);
+            window.setNavigationBarColor(color);
+        }
+
         orientationEventListener = new OrientationEventListener(this, SensorManager.SENSOR_DELAY_UI) {
             Display display = ((WindowManager) getSystemService(WINDOW_SERVICE)).getDefaultDisplay();
             int lastRotation = display.getRotation();
@@ -121,6 +136,7 @@ public class DFNightSelfiesMainActivity extends Activity implements View.OnClick
                         return;
 
                     int displayOrientation = -1, cameraRotation = -1;
+
                     switch (rotation) {
                         case Surface.ROTATION_0: // portrait
                             if (lastRotation != Surface.ROTATION_180)
@@ -450,13 +466,13 @@ public class DFNightSelfiesMainActivity extends Activity implements View.OnClick
                 @Override
                 protected void onPreExecute() {
                     super.onPreExecute();
-                    // TODO whiteFrame.setVisibility(View.VISIBLE);
+                    shutterFrame.setVisibility(View.VISIBLE);
                 }
 
                 @Override
                 protected void onPostExecute(Void aVoid) {
                     super.onPostExecute(aVoid);
-                    // TODO whiteFrame.setVisibility(View.INVISIBLE);
+                    shutterFrame.setVisibility(View.INVISIBLE);
                 }
 
                 @Override
@@ -570,6 +586,35 @@ public class DFNightSelfiesMainActivity extends Activity implements View.OnClick
             case R.id.discard:
                 discard();
                 setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_SENSOR);
+                break;
+
+            case R.id.picker:
+                final ColorPickerView picker = new ColorPickerView(this);
+                picker.setAlpha(1);
+                picker.showAlpha(false);
+                picker.setColor(color);
+                picker.setOriginalColor(color);
+                new AlertDialog.Builder(this)
+                        .setTitle(null)
+                        .setView(picker)
+                        .setPositiveButton(R.string.ok, new DialogInterface.OnClickListener() {
+                            @Override
+                            public void onClick(DialogInterface dialog, int which) {
+                                //color = Color.parseColor("#" + Integer.toHexString(picker.getColor()));
+                                color = picker.getColor();
+                                mSharedPreferences.edit().putInt("color", color).apply();
+                                mainLayout.setBackgroundColor(color);
+
+                                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+                                    final Window window = getWindow();
+                                    window.setStatusBarColor(color);
+                                    window.setNavigationBarColor(color);
+                                }
+                            }
+                        })
+                        .setNegativeButton(R.string.cancel, null)
+                        .create()
+                        .show();
                 break;
         }
     }

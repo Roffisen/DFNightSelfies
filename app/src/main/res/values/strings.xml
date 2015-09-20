@@ -8,6 +8,8 @@
     <string name="save">Save</string>
     <string name="share">Share</string>
     <string name="welcome">Welcome!</string>
-    <string name="welcome_text">Welcome to DF Night Selfies!\nTap the icon to take a selfie.\nUse volume button to regulate preview size.\nSwipe from right to left to browse your photos. </string>
+    <string name="welcome_text">Welcome to DF Night Selfies!\nTap anywhere to take a selfie.\nUse the color picker to change background color\nUse volume button to regulate preview size.\nSwipe from right to left to browse your photos. </string>
+    <string name="ok">OK</string>
+    <string name="cancel">Cancel</string>
 
 </resources>

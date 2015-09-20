@@ -16,14 +16,14 @@
         <item name="android:colorPrimary">@android:color/white</item>
 
         <!-- colorPrimaryDark is used for the status bar -->
-        <item name="android:colorPrimaryDark">#DDD</item>
+        <item name="android:colorPrimaryDark">@android:color/white</item>
 
         <!-- colorAccent is used as the default value for colorControlActivated
              which is used to tint widgets -->
         <item name="android:colorAccent">@android:color/white</item>
 
         <!-- navigationBarColor is used as the default value for navigation bar color -->
-        <item name="android:navigationBarColor">#DDD</item>
+        <item name="android:navigationBarColor">@android:color/white</item>
 
         <!-- textColor is used as the default value for text color -->
         <item name="android:textColor">@android:color/darker_gray</item>
