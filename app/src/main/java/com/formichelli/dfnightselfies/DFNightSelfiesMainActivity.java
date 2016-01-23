@@ -51,12 +51,13 @@ public class DFNightSelfiesMainActivity extends Activity implements View.OnClick
     private final static int MAX_SCALE = 1;
     private final static int MIN_SCALE = -2;
 
-    SharedPreferences mSharedPreferences;
+    SharedPreferences sharedPreferences;
     LinearLayout buttons;
     FrameLayout cameraPreview, mainLayout, shutterFrame;
     CameraPreview cameraSurface;
     SingleMediaScanner mediaScanner;
     OrientationEventListener orientationEventListener;
+    Camera.PictureCallback pictureTakenCallback = getPictureCallback();
 
     int scale;
     int color;
@@ -81,13 +82,13 @@ public class DFNightSelfiesMainActivity extends Activity implements View.OnClick
 
         shutterFrame = (FrameLayout) findViewById(R.id.shutter_frame);
 
-        buttons = (LinearLayout) findViewById(R.id.buttons);
+        buttons = getButtons();
         for (int i = 0; i < buttons.getChildCount(); i++)
             buttons.getChildAt(i).setOnClickListener(this);
 
         // The first time show a welcome dialog, the other times initialize camera as soon as the camera preview frame is ready
-        mSharedPreferences = getSharedPreferences("DFNightSelfies", MODE_PRIVATE);
-        if (mSharedPreferences.getInt("lastRunVersion", 0) < 7) {
+        sharedPreferences = getSharedPreferences("DFNightSelfies", MODE_PRIVATE);
+        if (sharedPreferences.getInt("lastRunVersion", 0) < 7) {
             new AlertDialog.Builder(DFNightSelfiesMainActivity.this).setTitle(R.string.welcome).setMessage(R.string.welcome_text).setNeutralButton("OK", new DialogInterface.OnClickListener() {
                 @Override
                 public void onClick(DialogInterface dialog, int which) {
@@ -97,7 +98,7 @@ public class DFNightSelfiesMainActivity extends Activity implements View.OnClick
                     } catch (PackageManager.NameNotFoundException e) {
                         currentVersion = 0;
                     }
-                    mSharedPreferences.edit().putInt("lastRunVersion", currentVersion).apply();
+                    sharedPreferences.edit().putInt("lastRunVersion", currentVersion).apply();
 
                     if (!initializeCamera())
                         exitWithError(R.string.cant_get_front_camera);
@@ -114,9 +115,9 @@ public class DFNightSelfiesMainActivity extends Activity implements View.OnClick
             });
         }
 
-        scale = mSharedPreferences.getInt("scaleFactor", 0);
+        scale = sharedPreferences.getInt("scaleFactor", 0);
 
-        color = mSharedPreferences.getInt("color", Color.WHITE);
+        color = sharedPreferences.getInt("color", Color.WHITE);
         mainLayout.setBackgroundColor(color);
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
             final Window window = getWindow();
@@ -182,6 +183,11 @@ public class DFNightSelfiesMainActivity extends Activity implements View.OnClick
                 }
             }
         };
+    }
+
+    LinearLayout getButtons()
+    {
+        return (LinearLayout) findViewById(R.id.buttons);
     }
 
     @Override
@@ -283,7 +289,7 @@ public class DFNightSelfiesMainActivity extends Activity implements View.OnClick
         cameraPreview.setLayoutParams(cameraPreviewParams);
 
         scale += enlarge ? 1 : -1;
-        mSharedPreferences.edit().putInt("scaleFactor", scale).apply();
+        sharedPreferences.edit().putInt("scaleFactor", scale).apply();
     }
 
     double scaleFactor(boolean enlarge) {
@@ -376,29 +382,6 @@ public class DFNightSelfiesMainActivity extends Activity implements View.OnClick
             throw new IllegalStateException("No sizes available");
 
         return sizes.get(0);
-        /*
-        int cameraPreviewHeight = cameraPreview.getHeight();
-
-        Camera.Size bestSize = sizes.get(0);
-        int bestDiff = bestSize.width - cameraPreviewHeight;
-        if (bestDiff < 0)
-            bestDiff = -bestDiff;
-
-        for (int i = 1; i < sizes.size(); i++) {
-            Camera.Size thisSize = sizes.get(i);
-
-            int thisDiff = thisSize.width - cameraPreviewHeight;
-            if (thisDiff < 0)
-                thisDiff = -thisDiff;
-
-            if (thisDiff < bestDiff) {
-                bestSize = thisSize;
-                bestDiff = thisDiff;
-            }
-        }
-
-        return bestSize;
-        */
     }
 
     private void exitWithError(int errorMessageId) {
@@ -489,31 +472,32 @@ public class DFNightSelfiesMainActivity extends Activity implements View.OnClick
         }
     };
 
-    private Camera.PictureCallback pictureTakenCallback = new Camera.PictureCallback() {
-        @Override
-        public void onPictureTaken(byte[] data, Camera camera) {
-            final File pictureFile = getOutputMediaFile();
-            if (pictureFile == null){
-                log("Error creating media file, check storage permissions");
-                return;
+    Camera.PictureCallback getPictureCallback() {
+        return new Camera.PictureCallback() {
+            @Override
+            public void onPictureTaken(byte[] data, Camera camera) {
+                final File pictureFile = getOutputMediaFile();
+                if (pictureFile == null){
+                    log("Error creating media file, check storage permissions");
+                    return;
+                }
+
+                try {
+                    FileOutputStream fos = new FileOutputStream(pictureFile);
+                    fos.write(data);
+                    fos.close();
+                } catch (FileNotFoundException e) {
+                    Log.d(TAG, "File not found: " + e.getMessage());
+                } catch (IOException e) {
+                    Log.d(TAG, "Error accessing file: " + e.getMessage());
+                }
+
+
+                mediaScanner = new SingleMediaScanner(DFNightSelfiesMainActivity.this, pictureFile);
+                buttons.setVisibility(View.VISIBLE);
             }
-
-            try {
-                FileOutputStream fos = new FileOutputStream(pictureFile);
-                fos.write(data);
-                fos.close();
-            } catch (FileNotFoundException e) {
-                Log.d(TAG, "File not found: " + e.getMessage());
-            } catch (IOException e) {
-                Log.d(TAG, "Error accessing file: " + e.getMessage());
-            }
-
-
-            mediaScanner = new SingleMediaScanner(DFNightSelfiesMainActivity.this, pictureFile);
-            buttons.setVisibility(View.VISIBLE);
-        }
-
-    };
+        };
+    }
 
     @Override
     public boolean onTouch(View v, MotionEvent event) {
@@ -583,7 +567,7 @@ public class DFNightSelfiesMainActivity extends Activity implements View.OnClick
                 setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_SENSOR);
                 break;
 
-            case R.id.discard:
+            case R.id.delete:
                 discard();
                 setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_SENSOR);
                 break;
@@ -602,7 +586,7 @@ public class DFNightSelfiesMainActivity extends Activity implements View.OnClick
                             public void onClick(DialogInterface dialog, int which) {
                                 //color = Color.parseColor("#" + Integer.toHexString(picker.getColor()));
                                 color = picker.getColor();
-                                mSharedPreferences.edit().putInt("color", color).apply();
+                                sharedPreferences.edit().putInt("color", color).apply();
                                 mainLayout.setBackgroundColor(color);
 
                                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
@@ -626,13 +610,12 @@ public class DFNightSelfiesMainActivity extends Activity implements View.OnClick
                 restartPreview();
     }
 
-    private void restartPreview() {
+    void restartPreview() {
         mediaScanner = null;
         mainLayout.setOnClickListener(this);
         mainLayout.setOnTouchListener(this);
         buttons.setVisibility(View.INVISIBLE);
         mCamera.startPreview();
-
     }
 
     @Override
@@ -695,7 +678,7 @@ public class DFNightSelfiesMainActivity extends Activity implements View.OnClick
         }
     }
 
-    private void discard() {
+    void discard() {
         if (getContentResolver().delete(mediaScanner.shareUri, null, null) == 0)
             log("Cannot delete cached file: " + mediaScanner.mFile.getAbsolutePath());
         restartPreview();

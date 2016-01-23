@@ -9,4 +9,6 @@
     <string name="welcome_text">Benvenuto su DF Night Selfies!\nTocca lo schermo per scattare un selfie.\nUsa il color picker per scegliere il colore di sfondo\nUsa i tasti volume per regolare la dimensione dell\'anteprima.\nScorri da destra verso sinistra per vedere le tue foto.</string>
     <string name="ok">OK</string>
     <string name="cancel">Annulla</string>
+    <string name="delete">Elimina</string>
+    <string name="accept">Accetta</string>
 </resources>

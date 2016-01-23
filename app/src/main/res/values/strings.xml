@@ -11,5 +11,7 @@
     <string name="welcome_text">Welcome to DF Night Selfies!\nTap anywhere to take a selfie.\nUse the color picker to change background color\nUse volume button to regulate preview size.\nSwipe from right to left to browse your photos. </string>
     <string name="ok">OK</string>
     <string name="cancel">Cancel</string>
+    <string name="delete">Delete</string>
+    <string name="accept">Accept</string>
 
 </resources>

@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+
+<!-- layout containing buttons -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/buttons_intent"
+    android:layout_width="fill_parent"
+    android:layout_height="wrap_content"
+    android:visibility="invisible"
+    android:layout_marginBottom="10dp"
+    android:layout_gravity="bottom"
+    tools:showIn="@layout/activity_dfnight_selfies_main">
+
+    <ImageButton
+        android:id="@+id/accept"
+        android:layout_width="0dp"
+        android:layout_weight="1"
+        android:layout_height="wrap_content"
+        android:layout_gravity="bottom"
+        android:background="#00FFFFFF"
+        android:src="@drawable/accept"
+        android:contentDescription="@string/accept" />
+
+    <ImageButton
+        android:id="@+id/discard"
+        android:layout_width="0dp"
+        android:layout_weight="1"
+        android:layout_height="wrap_content"
+        android:layout_gravity="bottom"
+        android:background="#00FFFFFF"
+        android:src="@drawable/discard"
+        android:contentDescription="@string/discard" />
+
+</LinearLayout>
