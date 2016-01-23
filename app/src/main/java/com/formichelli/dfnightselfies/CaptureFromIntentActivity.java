@@ -64,6 +64,10 @@ public class CaptureFromIntentActivity extends DFNightSelfiesMainActivity {
             case R.id.discard:
                 restartPreview();
                 break;
+
+            default:
+                super.onClick(v);
+                break;
         }
     }
 }
