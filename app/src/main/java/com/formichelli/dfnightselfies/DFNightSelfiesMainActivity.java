@@ -30,6 +30,7 @@ import android.view.ViewTreeObserver;
 import android.view.Window;
 import android.view.WindowManager;
 import android.widget.FrameLayout;
+import android.widget.ImageButton;
 import android.widget.LinearLayout;
 import android.widget.Toast;
 
@@ -43,6 +44,10 @@ import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.List;
 import java.util.Locale;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ScheduledFuture;
+import java.util.concurrent.TimeUnit;
 
 @SuppressWarnings("deprecation")
 public class DFNightSelfiesMainActivity extends Activity implements View.OnClickListener, View.OnTouchListener {
@@ -52,12 +57,18 @@ public class DFNightSelfiesMainActivity extends Activity implements View.OnClick
     private final static int MIN_SCALE = -2;
 
     SharedPreferences sharedPreferences;
+    ImageButton picker;
+    ImageButton timer;
     LinearLayout buttons;
     FrameLayout cameraPreview, mainLayout, shutterFrame;
     CameraPreview cameraSurface;
     SingleMediaScanner mediaScanner;
     OrientationEventListener orientationEventListener;
     Camera.PictureCallback pictureTakenCallback = getPictureCallback();
+    ScheduledExecutorService selfTimerScheduler = Executors.newSingleThreadScheduledExecutor();
+    ScheduledFuture selfTimerFuture;
+
+    boolean takingPicture;
 
     int scale;
     int color;
@@ -77,10 +88,11 @@ public class DFNightSelfiesMainActivity extends Activity implements View.OnClick
         cameraPreview = (FrameLayout) findViewById(R.id.camera_preview);
 
         mainLayout = (FrameLayout) findViewById(R.id.main_layout);
-        mainLayout.setOnClickListener(this);
-        mainLayout.setOnTouchListener(this);
 
         shutterFrame = (FrameLayout) findViewById(R.id.shutter_frame);
+
+        picker = (ImageButton) findViewById(R.id.picker);
+        timer = (ImageButton) findViewById(R.id.timer);
 
         buttons = getButtons();
         for (int i = 0; i < buttons.getChildCount(); i++)
@@ -185,8 +197,7 @@ public class DFNightSelfiesMainActivity extends Activity implements View.OnClick
         };
     }
 
-    LinearLayout getButtons()
-    {
+    LinearLayout getButtons() {
         return (LinearLayout) findViewById(R.id.buttons);
     }
 
@@ -222,6 +233,9 @@ public class DFNightSelfiesMainActivity extends Activity implements View.OnClick
 
         if (mCamera != null)
             mCamera.release();
+
+        if (selfTimerFuture != null)
+            selfTimerFuture.cancel(true);
     }
 
     private void setupWindow() {
@@ -356,8 +370,7 @@ public class DFNightSelfiesMainActivity extends Activity implements View.OnClick
             if (lastScale > 0) {
                 scaleFactor *= SCALE_FACTOR;
                 lastScale--;
-            }
-            else {
+            } else {
                 scaleFactor /= SCALE_FACTOR;
                 lastScale++;
             }
@@ -403,7 +416,9 @@ public class DFNightSelfiesMainActivity extends Activity implements View.OnClick
         Toast.makeText(this, message, Toast.LENGTH_LONG).show();
     }
 
-    /** A basic Camera preview class */
+    /**
+     * A basic Camera preview class
+     */
     public class CameraPreview extends SurfaceView implements SurfaceHolder.Callback {
         private SurfaceHolder mHolder;
         private Camera mCamera;
@@ -477,7 +492,7 @@ public class DFNightSelfiesMainActivity extends Activity implements View.OnClick
             @Override
             public void onPictureTaken(byte[] data, Camera camera) {
                 final File pictureFile = getOutputMediaFile();
-                if (pictureFile == null){
+                if (pictureFile == null) {
                     log("Error creating media file, check storage permissions");
                     return;
                 }
@@ -494,14 +509,31 @@ public class DFNightSelfiesMainActivity extends Activity implements View.OnClick
 
 
                 mediaScanner = new SingleMediaScanner(DFNightSelfiesMainActivity.this, pictureFile);
-                buttons.setVisibility(View.VISIBLE);
+                showButtons(true);
             }
         };
     }
 
+    void showButtons(boolean isPictureTaken) {
+        int showIfPictureTaken = isPictureTaken ? View.VISIBLE : View.INVISIBLE;
+        int showIfPictureNotTaken = isPictureTaken ? View.INVISIBLE : View.VISIBLE;
+
+        buttons.setVisibility(showIfPictureTaken);
+        picker.setVisibility(showIfPictureNotTaken);
+        timer.setVisibility(showIfPictureNotTaken);
+        if (!isPictureTaken) {
+            picker.setImageResource(R.drawable.picker);
+            timer.setImageResource(R.drawable.timer);
+        }
+    }
+
     @Override
     public boolean onTouch(View v, MotionEvent event) {
-        switch(event.getAction()) {
+        if (takingPicture) {
+            return false;
+        }
+
+        switch (event.getAction()) {
             case MotionEvent.ACTION_DOWN:
                 x = event.getX();
                 y = event.getY();
@@ -529,28 +561,7 @@ public class DFNightSelfiesMainActivity extends Activity implements View.OnClick
     public void onClick(View v) {
         switch (v.getId()) {
             case R.id.main_layout:
-                mediaScanner = null;
-                mainLayout.setOnClickListener(null);
-                mainLayout.setOnTouchListener(null);
-                switch (((WindowManager) getSystemService(WINDOW_SERVICE)).getDefaultDisplay().getRotation()) {
-                    case Surface.ROTATION_0: // portrait
-                        setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT);
-                        break;
-
-                    case Surface.ROTATION_180:  // portrait (upside down)
-                        setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_REVERSE_PORTRAIT);
-                        break;
-
-                    case Surface.ROTATION_90: // landscape (down at left)
-                        setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE);
-                        break;
-
-                    case Surface.ROTATION_270: // landscape (down at right)
-                        setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_REVERSE_LANDSCAPE);
-                        break;
-                }
-                mCamera.takePicture(shutterCallback, null, pictureTakenCallback);
-
+                takePicture();
                 break;
 
             case R.id.save:
@@ -559,12 +570,7 @@ public class DFNightSelfiesMainActivity extends Activity implements View.OnClick
                 break;
 
             case R.id.share:
-                Intent shareIntent = new Intent();
-                shareIntent.setAction(Intent.ACTION_SEND);
-                shareIntent.putExtra(Intent.EXTRA_STREAM, mediaScanner.shareUri);
-                shareIntent.setType("image/*");
-                startActivityForResult(Intent.createChooser(shareIntent, getResources().getText(R.string.share)), 0);
-                setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_SENSOR);
+                startShareIntent();
                 break;
 
             case R.id.delete:
@@ -573,34 +579,91 @@ public class DFNightSelfiesMainActivity extends Activity implements View.OnClick
                 break;
 
             case R.id.picker:
-                final ColorPickerView picker = new ColorPickerView(this);
-                picker.setAlpha(1);
-                picker.showAlpha(false);
-                picker.setColor(color);
-                picker.setOriginalColor(color);
-                new AlertDialog.Builder(this)
-                        .setTitle(null)
-                        .setView(picker)
-                        .setPositiveButton(R.string.ok, new DialogInterface.OnClickListener() {
-                            @Override
-                            public void onClick(DialogInterface dialog, int which) {
-                                //color = Color.parseColor("#" + Integer.toHexString(picker.getColor()));
-                                color = picker.getColor();
-                                sharedPreferences.edit().putInt("color", color).apply();
-                                mainLayout.setBackgroundColor(color);
+                showColorPicker();
+                break;
 
-                                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-                                    final Window window = getWindow();
-                                    window.setStatusBarColor(color);
-                                    window.setNavigationBarColor(color);
-                                }
-                            }
-                        })
-                        .setNegativeButton(R.string.cancel, null)
-                        .create()
-                        .show();
+            case R.id.timer:
+                startSelfTimer();
                 break;
         }
+    }
+
+    private void startSelfTimer() {
+        if (takingPicture) {
+            return;
+        }
+
+        takingPicture = true;
+        selfTimerFuture = selfTimerScheduler.scheduleAtFixedRate(new CountDown(3), 0, 1, TimeUnit.SECONDS);
+    }
+
+    private void startShareIntent() {
+        Intent shareIntent = new Intent();
+        shareIntent.setAction(Intent.ACTION_SEND);
+        shareIntent.putExtra(Intent.EXTRA_STREAM, mediaScanner.shareUri);
+        shareIntent.setType("image/*");
+        startActivityForResult(Intent.createChooser(shareIntent, getResources().getText(R.string.share)), 0);
+        setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_SENSOR);
+    }
+
+    private void showColorPicker() {
+        if (takingPicture) {
+            return;
+        }
+
+        final ColorPickerView picker = new ColorPickerView(this);
+        picker.setAlpha(1);
+        picker.showAlpha(false);
+        picker.setColor(color);
+        picker.setOriginalColor(color);
+        new AlertDialog.Builder(this)
+                .setTitle(null)
+                .setView(picker)
+                .setPositiveButton(R.string.ok, new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialog, int which) {
+                        //color = Color.parseColor("#" + Integer.toHexString(picker.getColor()));
+                        color = picker.getColor();
+                        sharedPreferences.edit().putInt("color", color).apply();
+                        mainLayout.setBackgroundColor(color);
+
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+                            final Window window = getWindow();
+                            window.setStatusBarColor(color);
+                            window.setNavigationBarColor(color);
+                        }
+                    }
+                })
+                .setNegativeButton(R.string.cancel, null)
+                .create()
+                .show();
+    }
+
+    private void takePicture() {
+        if (takingPicture) {
+            return;
+        }
+
+        takingPicture = true;
+        mediaScanner = null;
+        switch (((WindowManager) getSystemService(WINDOW_SERVICE)).getDefaultDisplay().getRotation()) {
+            case Surface.ROTATION_0: // portrait
+                setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT);
+                break;
+
+            case Surface.ROTATION_180:  // portrait (upside down)
+                setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_REVERSE_PORTRAIT);
+                break;
+
+            case Surface.ROTATION_90: // landscape (down at left)
+                setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE);
+                break;
+
+            case Surface.ROTATION_270: // landscape (down at right)
+                setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_REVERSE_LANDSCAPE);
+                break;
+        }
+        mCamera.takePicture(shutterCallback, null, pictureTakenCallback);
     }
 
     @Override
@@ -611,10 +674,9 @@ public class DFNightSelfiesMainActivity extends Activity implements View.OnClick
     }
 
     void restartPreview() {
+        takingPicture = false;
         mediaScanner = null;
-        mainLayout.setOnClickListener(this);
-        mainLayout.setOnTouchListener(this);
-        buttons.setVisibility(View.INVISIBLE);
+        showButtons(false);
         mCamera.startPreview();
     }
 
@@ -653,7 +715,7 @@ public class DFNightSelfiesMainActivity extends Activity implements View.OnClick
         return false;
     }
 
-    private File getOutputMediaFile(){
+    private File getOutputMediaFile() {
         try {
             // To be safe, you should check that the SDCard is mounted
             // using Environment.getExternalStorageState() before doing this.
@@ -672,8 +734,8 @@ public class DFNightSelfiesMainActivity extends Activity implements View.OnClick
                     throw new IOException();
 
             // Create the file
-            return new File(mediaStorageDir.getPath() + File.separator + "IMG_"+ new SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(new Date()) + ".jpg");
-        } catch(IOException e) {
+            return new File(mediaStorageDir.getPath() + File.separator + "IMG_" + new SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(new Date()) + ".jpg");
+        } catch (IOException e) {
             return null;
         }
     }
@@ -682,5 +744,56 @@ public class DFNightSelfiesMainActivity extends Activity implements View.OnClick
         if (getContentResolver().delete(mediaScanner.shareUri, null, null) == 0)
             log("Cannot delete cached file: " + mediaScanner.mFile.getAbsolutePath());
         restartPreview();
+    }
+
+    private class CountDown implements Runnable {
+        private int value;
+
+        public CountDown(final int start) {
+            value = start;
+        }
+
+        @Override
+        public void run() {
+            runOnUiThread(new Runnable() {
+                @Override
+                public void run() {
+                    setIcon(value--);
+
+                    if (value < 0) {
+                        selfTimerFuture.cancel(true);
+                        takingPicture = false;
+                        takePicture();
+                    }
+                }
+            });
+        }
+
+        private void setIcon(int value) {
+            final int resourceId;
+            switch (value) {
+                case 0:
+                    resourceId = R.drawable.transparent;
+                    break;
+
+                case 1:
+                    resourceId = R.drawable.one;
+                    break;
+
+                case 2:
+                    resourceId = R.drawable.two;
+                    break;
+
+                case 3:
+                    resourceId = R.drawable.three;
+                    picker.setImageResource(R.drawable.transparent);
+                    break;
+
+                default:
+                    return;
+            }
+
+            timer.setImageResource(resourceId);
+        }
     }
 }

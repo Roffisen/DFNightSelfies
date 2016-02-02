@@ -4,7 +4,8 @@
     android:layout_height="match_parent"
     tools:context=".DFNightSelfiesMainActivity"
     android:id="@+id/main_layout"
-    android:background="#ffffff">
+    android:background="#ffffff"
+    android:onClick="onClick">
 
     <!-- frame button that starts the color picker -->
     <ImageButton
@@ -16,6 +17,17 @@
         android:background="#00FFFFFF"
         android:onClick="onClick"
         android:layout_gravity="right|top" />
+
+    <!-- frame button that starts the color picker -->
+    <ImageButton
+        android:id="@+id/timer"
+        android:src="@drawable/timer"
+        android:layout_width="@dimen/color_picker_size"
+        android:layout_height="@dimen/color_picker_size"
+        android:layout_margin="10dp"
+        android:background="#00FFFFFF"
+        android:onClick="onClick"
+        android:layout_gravity="right|bottom" />
 
     <!-- frame containing camera preview -->
     <FrameLayout
