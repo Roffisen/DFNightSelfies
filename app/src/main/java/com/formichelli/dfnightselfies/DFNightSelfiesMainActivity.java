@@ -88,6 +88,7 @@ public class DFNightSelfiesMainActivity extends Activity implements View.OnClick
         cameraPreview = (FrameLayout) findViewById(R.id.camera_preview);
 
         mainLayout = (FrameLayout) findViewById(R.id.main_layout);
+        mainLayout.setOnTouchListener(this);
 
         shutterFrame = (FrameLayout) findViewById(R.id.shutter_frame);
 
