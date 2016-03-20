@@ -1,5 +1,6 @@
 package com.formichelli.dfnightselfies;
 
+import android.Manifest;
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.content.Context;
@@ -17,6 +18,8 @@ import android.os.Build;
 import android.os.Bundle;
 import android.os.Environment;
 import android.support.annotation.NonNull;
+import android.support.v4.app.ActivityCompat;
+import android.support.v4.content.ContextCompat;
 import android.util.Log;
 import android.view.Display;
 import android.view.KeyEvent;
@@ -42,8 +45,10 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.text.SimpleDateFormat;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
@@ -67,8 +72,10 @@ public class DFNightSelfiesMainActivity extends Activity implements View.OnClick
     Camera.PictureCallback pictureTakenCallback = getPictureCallback();
     ScheduledExecutorService selfTimerScheduler = Executors.newSingleThreadScheduledExecutor();
     ScheduledFuture selfTimerFuture;
+    private final static Map<String, Integer> permissionToIdMap;
 
     boolean takingPicture;
+    private boolean permissionGranted;
 
     int scale;
     int color;
@@ -77,9 +84,18 @@ public class DFNightSelfiesMainActivity extends Activity implements View.OnClick
 
     Camera mCamera;
 
+    static {
+        permissionToIdMap = new HashMap<>();
+        permissionToIdMap.put(Manifest.permission.CAMERA, 1);
+        permissionToIdMap.put(Manifest.permission.WRITE_EXTERNAL_STORAGE, 2);
+    }
+
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+
+        permissionGranted = false;
 
         setupWindow();
 
@@ -113,17 +129,16 @@ public class DFNightSelfiesMainActivity extends Activity implements View.OnClick
                     }
                     sharedPreferences.edit().putInt("lastRunVersion", currentVersion).apply();
 
-                    if (!initializeCamera())
-                        exitWithError(R.string.cant_get_front_camera);
+                    initializeCamera();
                 }
             }).show();
         } else {
             cameraPreview.getViewTreeObserver().addOnGlobalLayoutListener(new ViewTreeObserver.OnGlobalLayoutListener() {
                 @Override
                 public void onGlobalLayout() {
-                    if (mCamera == null)
-                        if (!initializeCamera())
-                            exitWithError(R.string.cant_get_front_camera);
+                    if (permissionGranted && mCamera == null) {
+                        initializeCamera();
+                    }
                 }
             });
         }
@@ -206,10 +221,13 @@ public class DFNightSelfiesMainActivity extends Activity implements View.OnClick
     protected void onStart() {
         super.onStart();
 
-        if (buttons.getVisibility() == View.INVISIBLE)
-            if (mCamera != null)
-                if (!initializeCamera())
-                    exitWithError(R.string.cant_get_front_camera);
+        if (buttons.getVisibility() == View.INVISIBLE) {
+            if (mCamera == null) {
+                if (checkPermissions()) {
+                    initializeCamera();
+                }
+            }
+        }
 
         orientationEventListener.enable();
     }
@@ -259,8 +277,9 @@ public class DFNightSelfiesMainActivity extends Activity implements View.OnClick
     }
 
     private boolean initializeCamera() {
-        if (!getPackageManager().hasSystemFeature(PackageManager.FEATURE_CAMERA))
+        if (!getPackageManager().hasSystemFeature(PackageManager.FEATURE_CAMERA)) {
             return false;
+        }
 
         Camera.CameraInfo mCameraInfo = new Camera.CameraInfo();
         for (int i = 0, l = Camera.getNumberOfCameras(); i < l; i++) {
@@ -284,6 +303,39 @@ public class DFNightSelfiesMainActivity extends Activity implements View.OnClick
         }
 
         return false;
+    }
+
+    private boolean checkPermissions() {
+        for (final String permission : permissionToIdMap.keySet()) {
+            if (ContextCompat.checkSelfPermission(this, permission) != PackageManager.PERMISSION_GRANTED) {
+                requestPermissions();
+                return false;
+            }
+        }
+
+        permissionGranted = true;
+        return true;
+    }
+
+    private void requestPermissions() {
+        ActivityCompat.requestPermissions(this, permissionToIdMap.keySet().toArray(new String[permissionToIdMap.size()]), 0);
+    }
+
+    @Override
+    public void onRequestPermissionsResult(int requestCode,
+                                           @NonNull String permissions[], @NonNull int[] grantResults) {
+        if (grantResults.length > 0) {
+            for (final int grantResult : grantResults) {
+                if (grantResult != PackageManager.PERMISSION_GRANTED) {
+                    exitWithError(R.string.cant_get_front_camera);
+                    return;
+                }
+            }
+
+            initializeCamera();
+        } else {
+            exitWithError(R.string.cant_get_front_camera);
+        }
     }
 
     private void resizePreview(boolean enlarge) {
