@@ -6,6 +6,8 @@
     -->
     <style name="AppBaseTheme" parent="android:Theme.Material.NoActionBar">
         <!-- API 21 theme customizations can go here. -->
+        <item name="android:colorForeground">@android:color/darker_gray</item>
+        <item name="android:textColorSecondary">@android:color/darker_gray</item>
     </style>
 
     <!-- Application theme. -->
@@ -13,14 +15,14 @@
         <!-- All customizations that are NOT specific to a particular API-level can go here. -->
 
         <!-- colorPrimary is used for the default action bar background -->
-        <item name="android:colorPrimary">@android:color/white</item>
+        <item name="android:colorPrimary">@android:color/darker_gray</item>
 
         <!-- colorPrimaryDark is used for the status bar -->
         <item name="android:colorPrimaryDark">@android:color/white</item>
 
         <!-- colorAccent is used as the default value for colorControlActivated
              which is used to tint widgets -->
-        <item name="android:colorAccent">@android:color/white</item>
+        <item name="android:colorAccent">@android:color/darker_gray</item>
 
         <!-- navigationBarColor is used as the default value for navigation bar color -->
         <item name="android:navigationBarColor">@android:color/white</item>
@@ -30,5 +32,11 @@
 
         <!-- windowBackground is used as the default value for background -->
         <item name="android:windowBackground">@android:color/white</item>
+
+        <!-- windowBackground is used as the default value for background -->
+        <item name="android:colorControlNormal">@android:color/darker_gray</item>
+        <item name="android:colorControlActivated">@android:color/darker_gray</item>
+        <item name="android:colorControlHighlight">@android:color/darker_gray</item>
+        <item name="android:textColorHint">@android:color/darker_gray</item>
     </style>
 </resources>

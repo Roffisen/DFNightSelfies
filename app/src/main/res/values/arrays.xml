@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string-array name="countdown_list">
+        <item>3</item>
+        <item>5</item>
+        <item>10</item>
+        <item>20</item>
+        <item>30</item>
+    </string-array>
+    <string-array name="color_choices">
+        <item>#0000FF</item>
+        <item>#00FF00</item>
+        <item>#FF0000</item>
+        <item>#8800FF</item>
+        <item>#FF00FF</item>
+        <item>#FF8800</item>
+        <item>#00FFFF</item>
+        <item>#FFFFFF</item>
+        <item>#FFFF00</item>
+    </string-array>
+</resources>

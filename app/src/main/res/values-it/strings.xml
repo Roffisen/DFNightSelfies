@@ -6,9 +6,16 @@
     <string name="save">Salva</string>
     <string name="share">Condividi</string>
     <string name="welcome">Benvenuto!</string>
-    <string name="welcome_text">Benvenuto su DF Night Selfies!\nTocca lo schermo per scattare un selfie.\nUsa il color picker per scegliere il colore di sfondo\nUsa i tasti volume per regolare la dimensione dell\'anteprima.\nScorri da destra verso sinistra per vedere le tue foto.</string>
+    <string name="welcome_text">Benvenuto su DF Night Selfies!\nTocca lo schermo per scattare un selfie.\nUsa le impostazioni per cambiare il colore di sfondo o la durata del timer.\nUsa i tasti volume per regolare la dimensione dell\'anteprima.</string>
     <string name="ok">OK</string>
     <string name="cancel">Annulla</string>
     <string name="delete">Elimina</string>
     <string name="accept">Accetta</string>
+    <string name="color_picker">Sfondo</string>
+    <string name="countdown_preference_title">Durata timer</string>
+    <string name="countdown_preference_summary">%d secondi</string>
+    <string name="disabled">Disabilitato</string>
+    <string name="enabled">Abilitato</string>
+    <string name="shutter_sound_preference_title">Suono otturatore</string>
+    <string name="color_picker_preference_title" translatable="false">Colore di sfondo</string>
 </resources>

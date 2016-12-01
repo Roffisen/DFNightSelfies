@@ -4,29 +4,34 @@
     android:layout_height="match_parent"
     tools:context=".DFNightSelfiesMainActivity"
     android:id="@+id/main_layout"
-    android:background="#ffffff"
-    android:onClick="onClick">
+    android:background="#ffffff">
+
+    <ImageButton
+        android:id="@+id/settings"
+        android:src="@drawable/settings"
+        android:layout_width="@dimen/buttons_size"
+        android:layout_height="@dimen/buttons_size"
+        android:layout_margin="10dp"
+        android:layout_gravity="left|top"
+        android:background="#000000FF"  />
+
+    <ImageButton
+        android:id="@+id/gallery"
+        android:src="@drawable/gallery"
+        android:layout_width="@dimen/buttons_size"
+        android:layout_height="@dimen/buttons_size"
+        android:layout_margin="10dp"
+        android:layout_gravity="right|top"
+        android:background="#000000FF" />
 
     <!-- frame button that starts the color picker -->
-    <ImageButton
-        android:id="@+id/picker"
-        android:src="@drawable/picker"
-        android:layout_width="@dimen/color_picker_size"
-        android:layout_height="@dimen/color_picker_size"
+    <TextView
+        android:id="@+id/countdown"
+        android:text="@string/countdown_string_format"
+        android:textSize="@dimen/countdown_text_size"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
         android:layout_margin="10dp"
-        android:background="#00FFFFFF"
-        android:onClick="onClick"
-        android:layout_gravity="right|top" />
-
-    <!-- frame button that starts the color picker -->
-    <ImageButton
-        android:id="@+id/timer"
-        android:src="@drawable/timer"
-        android:layout_width="@dimen/color_picker_size"
-        android:layout_height="@dimen/color_picker_size"
-        android:layout_margin="10dp"
-        android:background="#00FFFFFF"
-        android:onClick="onClick"
         android:layout_gravity="right|bottom" />
 
     <!-- frame containing camera preview -->
@@ -34,7 +39,6 @@
         android:id="@+id/camera_preview"
         android:layout_width="0dp"
         android:layout_height="0dp"
-        android:background="#000000"
         android:layout_gravity="center_horizontal|center_vertical">
     </FrameLayout>
 
@@ -46,6 +50,5 @@
         android:id="@+id/shutter_frame"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:visibility="invisible"
-        android:background="#ffffff" />
+        android:visibility="invisible" />
 </FrameLayout>

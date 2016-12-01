@@ -24,13 +24,15 @@
             </intent-filter>
         </activity>
         <activity
-            android:name=".CaptureFromIntentActivity"
+            android:name=".takephotointent.DFNightSelfiesFromIntentActivity"
             android:label="@string/app_name">
             <intent-filter>
                 <action android:name="android.media.action.IMAGE_CAPTURE" />
                 <category android:name="android.intent.category.DEFAULT" />
             </intent-filter>
         </activity>
+        <activity
+            android:name=".preference.DFNightSelfiesPreferences" />
     </application>
 
 </manifest>
