@@ -17,5 +17,5 @@
     <string name="disabled">Disabilitato</string>
     <string name="enabled">Abilitato</string>
     <string name="shutter_sound_preference_title">Suono otturatore</string>
-    <string name="color_picker_preference_title" translatable="false">Colore di sfondo</string>
+    <string name="color_picker_preference_title">Colore di sfondo</string>
 </resources>

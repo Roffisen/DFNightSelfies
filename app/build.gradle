@@ -6,7 +6,7 @@ android {
 
     defaultConfig {
         applicationId "com.formichelli.dfnightselfies"
-        minSdkVersion 21
+        minSdkVersion 14
         targetSdkVersion 25
         versionCode 15
         versionName "1.4"
