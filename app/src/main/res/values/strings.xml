@@ -26,4 +26,5 @@
     <string name="enabled">Enabled</string>
     <string name="disabled">Disabled</string>
     <string name="self_timer_default" translatable="false">3</string>
+    <string name="banner_ad_unit_id" translatable="false">ca-app-pub-9989396213762768/1176835337</string>
 </resources>

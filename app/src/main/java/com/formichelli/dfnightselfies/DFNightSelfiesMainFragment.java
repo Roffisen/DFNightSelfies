@@ -54,7 +54,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
-import java.util.Objects;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
@@ -90,6 +89,7 @@ public class DFNightSelfiesMainFragment extends Fragment implements View.OnClick
     private boolean permissionGranted;
 
     int scale;
+    private int enlargeCount = 0;
     int color;
     int countdownStart;
     boolean shouldPlaySound;
@@ -101,6 +101,7 @@ public class DFNightSelfiesMainFragment extends Fragment implements View.OnClick
         permissionToIdMap.put(Manifest.permission.CAMERA, 1);
         permissionToIdMap.put(Manifest.permission.WRITE_EXTERNAL_STORAGE, 2);
     }
+
 
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
@@ -119,7 +120,8 @@ public class DFNightSelfiesMainFragment extends Fragment implements View.OnClick
 
         cameraPreview = (FrameLayout) activity.findViewById(R.id.camera_preview);
 
-        mainLayout = Objects.requireNonNull(getView());
+        mainLayout = getView();
+        assert mainLayout != null;
         mainLayout.setOnClickListener(this);
 
         shutterFrame = (FrameLayout) activity.findViewById(R.id.shutter_frame);
@@ -300,9 +302,11 @@ public class DFNightSelfiesMainFragment extends Fragment implements View.OnClick
             if (mCameraInfo.facing == Camera.CameraInfo.CAMERA_FACING_FRONT) {
                 try {
                     mCamera = Camera.open(i);
-                    mCamera.enableShutterSound(false);
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN_MR1) {
+                        mCamera.enableShutterSound(false);
+                    }
 
-                    resizePreview();
+                    initializePreviewSize();
 
                     cameraSurface = new CameraPreview(getActivity(), mCamera);
                     cameraPreview.removeAllViews();
@@ -351,32 +355,67 @@ public class DFNightSelfiesMainFragment extends Fragment implements View.OnClick
         }
     }
 
-    private void resizePreview(boolean enlarge) {
+    private void resizePreview(int scaleCount) {
         int cameraPreviewWidth = cameraPreview.getWidth();
         int cameraPreviewHeight = cameraPreview.getHeight();
 
-        if (enlarge) {
-            if (scale == MAX_SCALE)
-                return;
-        } else {
-            if (scale == MIN_SCALE)
-                return;
+        if (scaleCount + scale > MAX_SCALE) {
+            // don't scale more than MAX_SCALE
+            scaleCount = MAX_SCALE - scale;
+        } else if (scaleCount + scale < MIN_SCALE) {
+            // don't scale less than MIN_SCALE
+            scaleCount = MIN_SCALE - scale;
+        }
+
+        if (scaleCount == 0) {
+            return;
         }
 
         FrameLayout.LayoutParams cameraPreviewParams = (FrameLayout.LayoutParams) cameraPreview.getLayoutParams();
-        cameraPreviewParams.width = (int) (cameraPreviewWidth * scaleFactor(enlarge));
-        cameraPreviewParams.height = (int) (cameraPreviewHeight * scaleFactor(enlarge));
+        cameraPreviewParams.width = (int) (cameraPreviewWidth * scaleFactor(scaleCount));
+        cameraPreviewParams.height = (int) (cameraPreviewHeight * scaleFactor(scaleCount));
         cameraPreview.setLayoutParams(cameraPreviewParams);
 
-        scale += enlarge ? 1 : -1;
+        scale += scaleCount;
         sharedPreferences.edit().putInt("scaleFactor", scale).apply();
     }
 
-    double scaleFactor(boolean enlarge) {
-        return (enlarge ? SCALE_FACTOR : 1 / SCALE_FACTOR);
+    private void resizeToMax() {
+        enlargeCount = MAX_SCALE - scale;
+        resizePreview(enlargeCount);
     }
 
-    private void resizePreview() {
+    private void restoreSize() {
+        resizePreview(-enlargeCount);
+    }
+
+    double scaleFactor(int scaleCount) {
+        final boolean shouldInvert;
+        if (scaleCount >= 0)
+        {
+            shouldInvert = false;
+        }
+        else
+        {
+            shouldInvert = true;
+            scaleCount = -scaleCount;
+        }
+
+        double scaleFactor = 1;
+        for (int i = 0; i < scaleCount; i++)
+        {
+            scaleFactor *= SCALE_FACTOR;
+        }
+
+        if (shouldInvert)
+        {
+            scaleFactor = 1 / scaleFactor;
+        }
+
+        return scaleFactor;
+    }
+
+    private void initializePreviewSize() {
         List<Camera.Size> sizes = mCamera.getParameters().getSupportedPreviewSizes();
 
         Display display = getActivity().getWindowManager().getDefaultDisplay();
@@ -515,12 +554,12 @@ public class DFNightSelfiesMainFragment extends Fragment implements View.OnClick
 
             case KeyEvent.KEYCODE_VOLUME_DOWN:
                 if (photoActionButtons.getVisibility() != View.VISIBLE)
-                    resizePreview(false);
+                    resizePreview(-1);
                 return true;
 
             case KeyEvent.KEYCODE_VOLUME_UP:
                 if (photoActionButtons.getVisibility() != View.VISIBLE)
-                    resizePreview(true);
+                    resizePreview(1);
                 return true;
         }
 
@@ -584,7 +623,9 @@ public class DFNightSelfiesMainFragment extends Fragment implements View.OnClick
         @Override
         public void onShutter() {
             if (shouldPlaySound) {
-                new MediaActionSound().play(MediaActionSound.SHUTTER_CLICK);
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN) {
+                    new MediaActionSound().play(MediaActionSound.SHUTTER_CLICK);
+                }
             }
 
             new AsyncTask<Void, Void, Void>() {
@@ -618,6 +659,7 @@ public class DFNightSelfiesMainFragment extends Fragment implements View.OnClick
         return new Camera.PictureCallback() {
             @Override
             public void onPictureTaken(byte[] data, Camera camera) {
+                resizeToMax();
                 mCamera.stopPreview();
 
                 final File pictureFile = getOutputMediaFile();
@@ -635,7 +677,6 @@ public class DFNightSelfiesMainFragment extends Fragment implements View.OnClick
                 } catch (IOException e) {
                     Log.d(TAG, "Error accessing file: " + e.getMessage());
                 }
-
 
                 mediaScanner = new SingleMediaScanner(getActivity(), pictureFile);
                 showButtons(true);
@@ -766,6 +807,7 @@ public class DFNightSelfiesMainFragment extends Fragment implements View.OnClick
     }
 
     protected void restartPreview() {
+        restoreSize();
         takingPicture = false;
         mediaScanner = null;
         showButtons(false);

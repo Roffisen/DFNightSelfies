@@ -1,23 +1,22 @@
 <?xml version="1.0" encoding="utf-8"?>
 <PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto">
-
     <CheckBoxPreference
         android:defaultValue="@bool/shutter_sound_default"
-        android:title="@string/shutter_sound_preference_title"
-        android:key="@string/shutter_sound_preference" />
+        android:key="@string/shutter_sound_preference"
+        android:title="@string/shutter_sound_preference_title" />
+
     <ListPreference
         android:defaultValue="@string/self_timer_default"
-        android:title="@string/countdown_preference_title"
         android:entries="@array/countdown_list"
         android:entryValues="@array/countdown_list"
-        android:key="@string/countdown_preference" />
+        android:key="@string/countdown_preference"
+        android:title="@string/countdown_preference_title" />
 
     <com.kizitonwose.colorpreference.ColorPreference
         android:defaultValue="@android:color/white"
         android:key="@string/color_picker_preference"
         android:title="@string/color_picker_preference_title"
         app:colorChoices="@array/color_choices"
-        app:numColumns="3"
-        />
+        app:numColumns="3" />
 </PreferenceScreen>

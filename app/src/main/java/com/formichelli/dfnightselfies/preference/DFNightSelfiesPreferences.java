@@ -6,10 +6,15 @@ import android.preference.CheckBoxPreference;
 import android.preference.ListPreference;
 import android.preference.Preference;
 import android.preference.PreferenceActivity;
+import android.view.ViewGroup;
 
 import com.formichelli.dfnightselfies.R;
+import com.google.android.gms.ads.AdRequest;
+import com.google.android.gms.ads.AdSize;
+import com.google.android.gms.ads.AdView;
 import com.kizitonwose.colorpreference.ColorPreference;
 
+@SuppressWarnings("deprecation")
 public class DFNightSelfiesPreferences extends PreferenceActivity implements SharedPreferences.OnSharedPreferenceChangeListener {
     @Override
     public void onCreate(Bundle savedInstanceState) {
@@ -17,8 +22,9 @@ public class DFNightSelfiesPreferences extends PreferenceActivity implements Sha
 
         // Load the preferences from an XML resource
         addPreferencesFromResource(R.xml.preferences);
-    }
 
+        addAd();
+    }
 
     protected void onResume() {
         super.onResume();
@@ -29,6 +35,18 @@ public class DFNightSelfiesPreferences extends PreferenceActivity implements Sha
 
         getPreferenceScreen().getSharedPreferences()
                 .registerOnSharedPreferenceChangeListener(this);
+    }
+
+    private void addAd() {
+        // Create the adView
+        AdView adView = new AdView(this);
+        adView.setAdSize(AdSize.SMART_BANNER);
+        adView.setAdUnitId(getString(R.string.banner_ad_unit_id));
+
+        ((ViewGroup) findViewById(android.R.id.list).getParent().getParent().getParent()).addView(adView, 0);
+
+        // Initiate a generic request to load it with an ad
+        adView.loadAd(new AdRequest.Builder().addTestDevice("5B5C0102B231DC20553952DAC00561A6").build());
     }
 
     protected void onPause() {
@@ -53,8 +71,11 @@ public class DFNightSelfiesPreferences extends PreferenceActivity implements Sha
             preference.setSummary(getString(R.string.countdown_preference_summary, Integer.valueOf(lp.getValue())));
         } else if (preference instanceof ColorPreference) {
             ColorPreference cp = (ColorPreference) preference;
-            preference.setSummary(String.format("#%06X", (0xFFFFFF & cp.getValue())));
+            preference.setSummary(intToHexColor(cp));
         }
+    }
 
+    private String intToHexColor(ColorPreference cp) {
+        return String.format("#%06X", (0xFFFFFF & cp.getValue()));
     }
 }

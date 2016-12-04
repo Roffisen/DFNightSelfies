@@ -6,6 +6,8 @@ import android.view.KeyEvent;
 import android.view.Window;
 import android.view.WindowManager;
 
+import com.google.android.gms.ads.MobileAds;
+
 public class DFNightSelfiesMainActivity extends Activity {
     DFNightSelfiesMainFragment fragment;
 
@@ -14,6 +16,8 @@ public class DFNightSelfiesMainActivity extends Activity {
         super.onCreate(savedInstanceState);
 
         setupWindow();
+
+        MobileAds.initialize(getApplicationContext(), getString(R.string.banner_ad_unit_id));
 
         fragment = new DFNightSelfiesMainFragment();
 
