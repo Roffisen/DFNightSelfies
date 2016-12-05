@@ -15,7 +15,6 @@ import android.graphics.PixelFormat;
 import android.hardware.Camera;
 import android.hardware.SensorManager;
 import android.media.MediaActionSound;
-import android.os.AsyncTask;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Environment;
@@ -397,24 +396,19 @@ public class DFNightSelfiesMainFragment extends Fragment implements View.OnClick
 
     double scaleFactor(int scaleCount) {
         final boolean shouldInvert;
-        if (scaleCount >= 0)
-        {
+        if (scaleCount >= 0) {
             shouldInvert = false;
-        }
-        else
-        {
+        } else {
             shouldInvert = true;
             scaleCount = -scaleCount;
         }
 
         double scaleFactor = 1;
-        for (int i = 0; i < scaleCount; i++)
-        {
+        for (int i = 0; i < scaleCount; i++) {
             scaleFactor *= SCALE_FACTOR;
         }
 
-        if (shouldInvert)
-        {
+        if (shouldInvert) {
             scaleFactor = 1 / scaleFactor;
         }
 
@@ -738,13 +732,10 @@ public class DFNightSelfiesMainFragment extends Fragment implements View.OnClick
     }
 
     private void switchCamera() {
-        if (cameraFacing == Camera.CameraInfo.CAMERA_FACING_FRONT)
-        {
+        if (cameraFacing == Camera.CameraInfo.CAMERA_FACING_FRONT) {
             cameraFacing = Camera.CameraInfo.CAMERA_FACING_BACK;
             switchCamera.setImageResource(R.drawable.camera_front);
-        }
-        else
-        {
+        } else {
             cameraFacing = Camera.CameraInfo.CAMERA_FACING_FRONT;
             switchCamera.setImageResource(R.drawable.camera_back);
         }
