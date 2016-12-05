@@ -71,9 +71,11 @@ public class DFNightSelfiesMainFragment extends Fragment implements View.OnClick
     private final static int MAX_SCALE = 1;
     private final static int MIN_SCALE = -2;
 
+    private int cameraFacing;
     SharedPreferences sharedPreferences;
     ImageButton settings;
     ImageButton gallery;
+    ImageButton switchCamera;
     TextView countdown;
     LinearLayout photoActionButtons;
     View[] beforePhotoButtons;
@@ -113,6 +115,8 @@ public class DFNightSelfiesMainFragment extends Fragment implements View.OnClick
     public void onActivityCreated(Bundle savedInstanceState) {
         super.onActivityCreated(savedInstanceState);
 
+        cameraFacing = Camera.CameraInfo.CAMERA_FACING_FRONT;
+
         final Activity activity = getActivity();
 
         permissionGranted = false;
@@ -137,7 +141,10 @@ public class DFNightSelfiesMainFragment extends Fragment implements View.OnClick
         gallery = (ImageButton) activity.findViewById(R.id.gallery);
         gallery.setOnClickListener(this);
 
-        beforePhotoButtons = new View[]{settings, gallery, countdown};
+        switchCamera = (ImageButton) activity.findViewById(R.id.switch_camera);
+        switchCamera.setOnClickListener(this);
+
+        beforePhotoButtons = new View[]{settings, gallery, switchCamera, countdown};
 
         photoActionButtons = getPhotoActionButtons();
         for (int i = 0; i < photoActionButtons.getChildCount(); i++)
@@ -298,10 +305,16 @@ public class DFNightSelfiesMainFragment extends Fragment implements View.OnClick
             return false;
         }
 
+        if (mCamera != null) {
+            mCamera.stopPreview();
+            mCamera.release();
+            mCamera = null;
+        }
+
         Camera.CameraInfo mCameraInfo = new Camera.CameraInfo();
         for (int i = 0, l = Camera.getNumberOfCameras(); i < l; i++) {
             Camera.getCameraInfo(i, mCameraInfo);
-            if (mCameraInfo.facing == Camera.CameraInfo.CAMERA_FACING_FRONT) {
+            if (mCameraInfo.facing == cameraFacing) {
                 try {
                     mCamera = Camera.open(i);
                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN_MR1) {
@@ -633,30 +646,7 @@ public class DFNightSelfiesMainFragment extends Fragment implements View.OnClick
                 }
             }
 
-            new AsyncTask<Void, Void, Void>() {
-                @Override
-                protected void onPreExecute() {
-                    super.onPreExecute();
-                    shutterFrame.setVisibility(View.VISIBLE);
-                }
-
-                @Override
-                protected void onPostExecute(Void aVoid) {
-                    super.onPostExecute(aVoid);
-                    shutterFrame.setVisibility(View.GONE);
-                }
-
-                @Override
-                protected Void doInBackground(Void... params) {
-                    try {
-                        Thread.sleep(200);
-                    } catch (Exception e) {
-                        // Nothing to do
-                    }
-
-                    return null;
-                }
-            }.execute();
+            shutterFrame.setVisibility(View.VISIBLE);
         }
     };
 
@@ -665,6 +655,7 @@ public class DFNightSelfiesMainFragment extends Fragment implements View.OnClick
             @Override
             public void onPictureTaken(byte[] data, Camera camera) {
                 mCamera.stopPreview();
+                shutterFrame.setVisibility(View.GONE);
 
                 photoPreview.setImageBitmap(BitmapFactory.decodeByteArray(data, 0, data.length));
                 photoPreview.setVisibility(View.VISIBLE);
@@ -739,7 +730,26 @@ public class DFNightSelfiesMainFragment extends Fragment implements View.OnClick
             case R.id.gallery:
                 showGallery();
                 break;
+
+            case R.id.switch_camera:
+                switchCamera();
+                break;
         }
+    }
+
+    private void switchCamera() {
+        if (cameraFacing == Camera.CameraInfo.CAMERA_FACING_FRONT)
+        {
+            cameraFacing = Camera.CameraInfo.CAMERA_FACING_BACK;
+            switchCamera.setImageResource(R.drawable.camera_front);
+        }
+        else
+        {
+            cameraFacing = Camera.CameraInfo.CAMERA_FACING_FRONT;
+            switchCamera.setImageResource(R.drawable.camera_back);
+        }
+
+        initializeCamera();
     }
 
     private void showGallery() {

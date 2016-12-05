@@ -9,7 +9,7 @@
     <ImageButton
         android:id="@+id/settings"
         android:layout_width="@dimen/buttons_size"
-        android:layout_height="@dimen/buttons_size"
+        android:layout_height="wrap_content"
         android:layout_gravity="left|top"
         android:layout_margin="10dp"
         android:background="#000000FF"
@@ -18,13 +18,21 @@
     <ImageButton
         android:id="@+id/gallery"
         android:layout_width="@dimen/buttons_size"
-        android:layout_height="@dimen/buttons_size"
+        android:layout_height="wrap_content"
         android:layout_gravity="right|top"
         android:layout_margin="10dp"
         android:background="#000000FF"
         android:src="@drawable/gallery" />
 
-    <!-- frame button that starts the color picker -->
+    <ImageButton
+        android:id="@+id/switch_camera"
+        android:layout_width="@dimen/buttons_size"
+        android:layout_height="wrap_content"
+        android:layout_gravity="left|bottom"
+        android:layout_margin="10dp"
+        android:background="#000000FF"
+        android:src="@drawable/camera_back" />
+
     <TextView
         android:id="@+id/countdown"
         android:layout_width="wrap_content"
