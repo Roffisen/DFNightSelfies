@@ -215,9 +215,15 @@ public class DFNightSelfiesMainFragment extends Fragment implements View.OnClick
                 synchronized (this) {
                     mCamera.setDisplayOrientation(getDisplayOrientation(displayRotation));
                     cameraRotation = getCameraRotation(displayRotation);
-                    Camera.Parameters cameraParameters = mCamera.getParameters();
-                    cameraParameters.setRotation(cameraRotation);
-                    mCamera.setParameters(cameraParameters);
+                    try {
+                        Camera.Parameters cameraParameters = mCamera.getParameters();
+                        cameraParameters.setRotation(cameraRotation);
+                        mCamera.setParameters(cameraParameters);
+                    }
+                    catch (Exception e)
+                    {
+                        // nothing to do
+                    }
                 }
             }
 
@@ -291,12 +297,10 @@ public class DFNightSelfiesMainFragment extends Fragment implements View.OnClick
     public void onStop() {
         super.onStop();
 
-        if (photoActionButtons.getVisibility() == View.GONE) {
-            if (mCamera != null) {
-                mCamera.stopPreview();
-                mCamera.release();
-                mCamera = null;
-            }
+        if (mCamera != null) {
+            mCamera.stopPreview();
+            mCamera.release();
+            mCamera = null;
         }
 
         orientationEventListener.disable();
