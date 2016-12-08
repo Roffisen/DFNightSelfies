@@ -8,8 +8,8 @@ android {
         applicationId "com.formichelli.dfnightselfies"
         minSdkVersion 14
         targetSdkVersion 25
-        versionCode 16
-        versionName "1.4.1"
+        versionCode 17
+        versionName "1.4.2"
     }
     buildTypes {
         release {

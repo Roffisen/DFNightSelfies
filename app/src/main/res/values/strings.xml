@@ -8,7 +8,7 @@
     <string name="save">Save</string>
     <string name="share">Share</string>
     <string name="welcome">Welcome!</string>
-    <string name="welcome_text">Welcome to DF Night Selfies!\nTap anywhere to take a selfie.\nUse the settings to change background color or timer duration.\nUse volume buttons to regulate preview size.</string>
+    <string name="welcome_text">Welcome to DF Night Selfies!\nTap anywhere to take a selfie.\nUse the settings to change background color or timer duration.\nUse volume buttons to regulate preview size.\nIf the photo is incorrectly rotated on your device, please enable the \"Rotation Fix\" setting.</string>
     <string name="ok">OK</string>
     <string name="cancel">Cancel</string>
     <string name="delete">Delete</string>
