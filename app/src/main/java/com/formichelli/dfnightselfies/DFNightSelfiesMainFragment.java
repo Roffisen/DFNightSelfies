@@ -60,6 +60,7 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 
+import static android.R.attr.rotation;
 import static android.app.Activity.RESULT_CANCELED;
 import static android.content.Context.WINDOW_SERVICE;
 
@@ -98,12 +99,14 @@ public class DFNightSelfiesMainFragment extends Fragment implements View.OnClick
     boolean shouldPlaySound;
 
     Camera mCamera;
+    int cameraOrientation;
 
     static {
         permissionToIdMap = new HashMap<>();
         permissionToIdMap.put(Manifest.permission.CAMERA, 1);
         permissionToIdMap.put(Manifest.permission.WRITE_EXTERNAL_STORAGE, 2);
     }
+
 
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
@@ -113,8 +116,6 @@ public class DFNightSelfiesMainFragment extends Fragment implements View.OnClick
     @Override
     public void onActivityCreated(Bundle savedInstanceState) {
         super.onActivityCreated(savedInstanceState);
-
-        cameraFacing = Camera.CameraInfo.CAMERA_FACING_FRONT;
 
         final Activity activity = getActivity();
 
@@ -178,6 +179,8 @@ public class DFNightSelfiesMainFragment extends Fragment implements View.OnClick
 
         scale = sharedPreferences.getInt("scaleFactor", 0);
 
+        cameraFacing = sharedPreferences.getInt("cameraFacing", Camera.CameraInfo.CAMERA_FACING_FRONT);
+
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
             final Window window = activity.getWindow();
             window.setStatusBarColor(color);
@@ -186,60 +189,66 @@ public class DFNightSelfiesMainFragment extends Fragment implements View.OnClick
 
         orientationEventListener = new OrientationEventListener(activity, SensorManager.SENSOR_DELAY_UI) {
             Display display = ((WindowManager) activity.getSystemService(WINDOW_SERVICE)).getDefaultDisplay();
-            int lastRotation = display.getRotation();
+            int lastDisplayOrientation = ORIENTATION_UNKNOWN;
 
             @Override
             public void onOrientationChanged(int orientation) {
-                synchronized (this) {
-                    int rotation = display.getRotation();
-                    if (lastRotation == rotation)
-                        return;
-
-                    int displayOrientation = -1, cameraRotation = -1;
-
-                    switch (rotation) {
-                        case Surface.ROTATION_0: // portrait
-                            if (lastRotation != Surface.ROTATION_180)
-                                break;
-                            displayOrientation = 90;
-                            cameraRotation = 270;
-                            break;
-
-                        case Surface.ROTATION_180:  // portrait (upside down)
-                            if (lastRotation != Surface.ROTATION_0)
-                                break;
-
-                            displayOrientation = 270;
-                            cameraRotation = 90;
-                            break;
-
-                        case Surface.ROTATION_90: // landscape (down at right)
-                            if (lastRotation != Surface.ROTATION_270)
-                                break;
-
-                            displayOrientation = 0;
-                            cameraRotation = 0;
-                            break;
-
-                        case Surface.ROTATION_270: // landscape (down at left)
-                            if (lastRotation != Surface.ROTATION_90)
-                                break;
-
-                            displayOrientation = 180;
-                            cameraRotation = 180;
-                            break;
-                    }
-
-                    lastRotation = rotation;
-
-                    if (displayOrientation == -1)
-                        return;
-
-                    mCamera.setDisplayOrientation(displayOrientation);
-                    Camera.Parameters mCameraParameters = mCamera.getParameters();
-                    mCameraParameters.setRotation(cameraRotation);
-                    mCamera.setParameters(mCameraParameters);
+                if (mCamera == null) {
+                    return;
                 }
+
+                if (orientation == ORIENTATION_UNKNOWN) {
+                    return;
+                }
+
+                final int displayOrientation = getDisplayRotation();
+                if (lastDisplayOrientation == displayOrientation) {
+                    return;
+                } else {
+                    lastDisplayOrientation = displayOrientation;
+                }
+
+                synchronized (this) {
+                    mCamera.setDisplayOrientation(getDisplayOrientation(displayOrientation));
+                    Camera.Parameters cameraParameters = mCamera.getParameters();
+                    cameraParameters.setRotation(getCameraRotation(displayOrientation));
+                    mCamera.setParameters(cameraParameters);
+
+                    Toast.makeText(getActivity(), "CameraOrientation: " + cameraOrientation + ", DisplayOrientation: " + displayOrientation + ", Result: " + rotation, Toast.LENGTH_LONG).show();
+                }
+            }
+
+            private int getCameraRotation(int displayOrientation) {
+                int rotation;
+                if (cameraFacing == Camera.CameraInfo.CAMERA_FACING_FRONT) {
+                    rotation = (cameraOrientation - displayOrientation + 360) % 360;
+                } else {
+                    rotation = (cameraOrientation + displayOrientation) % 360;
+                }
+                return rotation;
+            }
+
+            private int getDisplayRotation() {
+                switch (display.getRotation()) {
+                    case Surface.ROTATION_0:
+                        return 0;
+
+                    case Surface.ROTATION_90:
+                        return 270;
+
+                    case Surface.ROTATION_180:
+                        return 180;
+
+                    case Surface.ROTATION_270:
+                        return 90;
+
+                    default:
+                        return -1;
+                }
+            }
+
+            private int getDisplayOrientation(int displayOrientation) {
+                return (displayOrientation + 90) % 360;
             }
         };
 
@@ -325,6 +334,8 @@ public class DFNightSelfiesMainFragment extends Fragment implements View.OnClick
                     cameraSurface = new CameraPreview(getActivity(), mCamera);
                     cameraPreview.removeAllViews();
                     cameraPreview.addView(cameraSurface);
+                    cameraOrientation = mCameraInfo.orientation;
+                    orientationEventListener.onOrientationChanged(0);
                     return true;
                 } catch (RuntimeException e) {
                     log("Can't open camera " + i + ": " + e.getLocalizedMessage());
@@ -739,6 +750,8 @@ public class DFNightSelfiesMainFragment extends Fragment implements View.OnClick
             cameraFacing = Camera.CameraInfo.CAMERA_FACING_FRONT;
             switchCamera.setImageResource(R.drawable.camera_back);
         }
+
+        sharedPreferences.edit().putInt("cameraFacing", cameraFacing).apply();
 
         initializeCamera();
     }
