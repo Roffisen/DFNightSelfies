@@ -10,7 +10,9 @@ import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.ActivityInfo;
 import android.content.pm.PackageManager;
+import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
+import android.graphics.Matrix;
 import android.graphics.PixelFormat;
 import android.hardware.Camera;
 import android.hardware.SensorManager;
@@ -60,7 +62,6 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 
-import static android.R.attr.rotation;
 import static android.app.Activity.RESULT_CANCELED;
 import static android.content.Context.WINDOW_SERVICE;
 
@@ -106,6 +107,9 @@ public class DFNightSelfiesMainFragment extends Fragment implements View.OnClick
         permissionToIdMap.put(Manifest.permission.CAMERA, 1);
         permissionToIdMap.put(Manifest.permission.WRITE_EXTERNAL_STORAGE, 2);
     }
+
+    private int cameraRotation;
+    private boolean rotationFix;
 
 
     @Override
@@ -189,7 +193,7 @@ public class DFNightSelfiesMainFragment extends Fragment implements View.OnClick
 
         orientationEventListener = new OrientationEventListener(activity, SensorManager.SENSOR_DELAY_UI) {
             Display display = ((WindowManager) activity.getSystemService(WINDOW_SERVICE)).getDefaultDisplay();
-            int lastDisplayOrientation = ORIENTATION_UNKNOWN;
+            int lastDisplayRotation;
 
             @Override
             public void onOrientationChanged(int orientation) {
@@ -198,23 +202,22 @@ public class DFNightSelfiesMainFragment extends Fragment implements View.OnClick
                 }
 
                 if (orientation == ORIENTATION_UNKNOWN) {
-                    return;
+                    lastDisplayRotation = ORIENTATION_UNKNOWN;
                 }
 
-                final int displayOrientation = getDisplayRotation();
-                if (lastDisplayOrientation == displayOrientation) {
+                final int displayRotation = getDisplayRotation();
+                if (lastDisplayRotation == displayRotation) {
                     return;
                 } else {
-                    lastDisplayOrientation = displayOrientation;
+                    lastDisplayRotation = displayRotation;
                 }
 
                 synchronized (this) {
-                    mCamera.setDisplayOrientation(getDisplayOrientation(displayOrientation));
+                    mCamera.setDisplayOrientation(getDisplayOrientation(displayRotation));
+                    cameraRotation = getCameraRotation(displayRotation);
                     Camera.Parameters cameraParameters = mCamera.getParameters();
-                    cameraParameters.setRotation(getCameraRotation(displayOrientation));
+                    cameraParameters.setRotation(cameraRotation);
                     mCamera.setParameters(cameraParameters);
-
-                    Toast.makeText(getActivity(), "CameraOrientation: " + cameraOrientation + ", DisplayOrientation: " + displayOrientation + ", Result: " + rotation, Toast.LENGTH_LONG).show();
                 }
             }
 
@@ -279,6 +282,8 @@ public class DFNightSelfiesMainFragment extends Fragment implements View.OnClick
         countdownStart = Integer.valueOf(sharedPreferences.getString(getString(R.string.countdown_preference), "3"));
         countdown.setText(getString(R.string.countdown_string_format, countdownStart));
 
+        rotationFix = sharedPreferences.getBoolean(getString(R.string.rotation_fix_preference), false);
+
         shouldPlaySound = sharedPreferences.getBoolean(getString(R.string.shutter_sound_preference), false);
     }
 
@@ -335,7 +340,7 @@ public class DFNightSelfiesMainFragment extends Fragment implements View.OnClick
                     cameraPreview.removeAllViews();
                     cameraPreview.addView(cameraSurface);
                     cameraOrientation = mCameraInfo.orientation;
-                    orientationEventListener.onOrientationChanged(0);
+                    orientationEventListener.onOrientationChanged(OrientationEventListener.ORIENTATION_UNKNOWN);
                     return true;
                 } catch (RuntimeException e) {
                     log("Can't open camera " + i + ": " + e.getLocalizedMessage());
@@ -662,7 +667,9 @@ public class DFNightSelfiesMainFragment extends Fragment implements View.OnClick
                 mCamera.stopPreview();
                 shutterFrame.setVisibility(View.GONE);
 
-                photoPreview.setImageBitmap(BitmapFactory.decodeByteArray(data, 0, data.length));
+                Bitmap bitmap = rotate(BitmapFactory.decodeByteArray(data, 0, data.length), cameraRotation);
+
+                       photoPreview.setImageBitmap(bitmap);
                 photoPreview.setVisibility(View.VISIBLE);
                 cameraSurface.setVisibility(View.GONE);
 
@@ -674,7 +681,7 @@ public class DFNightSelfiesMainFragment extends Fragment implements View.OnClick
 
                 try {
                     FileOutputStream fos = new FileOutputStream(pictureFile);
-                    fos.write(data);
+                    bitmap.compress(Bitmap.CompressFormat.JPEG, 100, fos);
                     fos.close();
                 } catch (FileNotFoundException e) {
                     Log.d(TAG, "File not found: " + e.getMessage());
@@ -684,6 +691,19 @@ public class DFNightSelfiesMainFragment extends Fragment implements View.OnClick
 
                 mediaScanner = new SingleMediaScanner(getActivity(), pictureFile);
                 showButtons(true);
+            }
+
+            private Bitmap rotate(final Bitmap bitmap, final int cameraRotation) {
+                if (rotationFix)
+                {
+                    Matrix matrix = new Matrix();
+                    matrix.setRotate(cameraRotation);
+                    return Bitmap.createBitmap(bitmap, 0, 0, bitmap.getWidth(), bitmap.getHeight(), matrix, true);
+                }
+                else
+                {
+                    return bitmap;
+                }
             }
         };
     }

@@ -19,4 +19,9 @@
         android:title="@string/color_picker_preference_title"
         app:colorChoices="@array/color_choices"
         app:numColumns="3" />
+
+    <CheckBoxPreference
+        android:defaultValue="@bool/rotation_fix_default"
+        android:key="@string/rotation_fix_preference"
+        android:title="@string/rotation_fix_preference_title" />
 </PreferenceScreen>
