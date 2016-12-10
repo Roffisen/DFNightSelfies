@@ -19,4 +19,6 @@
     <string name="shutter_sound_preference_title">Suono otturatore</string>
     <string name="color_picker_preference_title">Colore di sfondo</string>
     <string name="rotation_fix_preference_title">Fix Rotazione</string>
+    <string name="info_dialog_title">Info</string>
+    <string name="info_dialog_summary">Mostra informazioni</string>
 </resources>

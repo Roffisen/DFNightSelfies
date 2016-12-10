@@ -24,4 +24,17 @@
         android:defaultValue="@bool/rotation_fix_default"
         android:key="@string/rotation_fix_preference"
         android:title="@string/rotation_fix_preference_title" />
+
+    <com.kizitonwose.colorpreference.ColorPreference
+        android:defaultValue="@android:color/white"
+        android:key="@string/color_picker_preference"
+        android:title="@string/color_picker_preference_title"
+        app:colorChoices="@array/color_choices"
+        app:numColumns="3" />
+
+    <com.formichelli.dfnightselfies.preference.SimpleDialogPreference
+        android:title="@string/info_dialog_title"
+        android:summary="@string/info_dialog_summary"
+        android:dialogTitle="@string/info_dialog_title"
+        android:dialogMessage="@string/welcome_text" />
 </PreferenceScreen>

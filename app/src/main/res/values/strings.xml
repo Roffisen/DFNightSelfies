@@ -29,4 +29,6 @@
     <string name="banner_ad_unit_id" translatable="false">ca-app-pub-9989396213762768/1176835337</string>
     <string name="rotation_fix_preference" translatable="false">rotation_fix_preference</string>
     <string name="rotation_fix_preference_title">Rotation fix</string>
+    <string name="info_dialog_title">Info</string>
+    <string name="info_dialog_summary">Show application info</string>
 </resources>

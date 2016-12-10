@@ -111,7 +111,6 @@ public class DFNightSelfiesMainFragment extends Fragment implements View.OnClick
     private int cameraRotation;
     private boolean rotationFix;
 
-
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
         return inflater.inflate(R.layout.fragment_dfnight_selfies_main, container, false);
@@ -604,6 +603,7 @@ public class DFNightSelfiesMainFragment extends Fragment implements View.OnClick
 
     private void startPreview() {
         photoPreview.setVisibility(View.GONE);
+        photoPreview.setImageResource(android.R.color.transparent);
         cameraSurface.setVisibility(View.VISIBLE);
         mCamera.startPreview();
     }
