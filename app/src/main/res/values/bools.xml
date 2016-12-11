@@ -2,4 +2,5 @@
 <resources>
     <bool name="shutter_sound_default">true</bool>
     <bool name="rotation_fix_default">false</bool>
+    <bool name="save_to_gallery_default">false</bool>
 </resources>

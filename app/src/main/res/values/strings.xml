@@ -31,4 +31,8 @@
     <string name="rotation_fix_preference_title">Rotation fix</string>
     <string name="info_dialog_title">Info</string>
     <string name="info_dialog_summary">Show application info</string>
+    <string name="save_to_gallery_preference" translatable="false">save_to_gallery_preference</string>
+    <string name="save_to_gallery_preference_title">Save to gallery</string>
+    <string name="save_to_gallery_summary">Images will be saved to %s</string>
+    <string name="save_to_gallery_folder">DFNightSelfies</string>
 </resources>

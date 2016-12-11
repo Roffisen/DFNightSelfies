@@ -15,7 +15,7 @@ public class DFNightSelfiesMainActivity extends Activity {
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
-        setupWindow();
+        WindowUtil.setupWindow(this);
 
         MobileAds.initialize(getApplicationContext(), getString(R.string.banner_ad_unit_id));
 
@@ -24,25 +24,6 @@ public class DFNightSelfiesMainActivity extends Activity {
         getFragmentManager().beginTransaction()
                 .replace(android.R.id.content, fragment)
                 .commit();
-    }
-
-    protected void setupWindow() {
-        Window w = getWindow();
-
-        // hide title
-        requestWindowFeature(Window.FEATURE_NO_TITLE);
-
-        // hide statusbar if not on lollipop
-        if (android.os.Build.VERSION.SDK_INT < 21)
-            w.setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN, WindowManager.LayoutParams.FLAG_FULLSCREEN);
-
-        // keep screen on
-        w.addFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
-
-        // set brightness to maximum
-        WindowManager.LayoutParams windowAttributes = w.getAttributes();
-        windowAttributes.screenBrightness = 1;
-        w.setAttributes(windowAttributes);
     }
 
     @Override

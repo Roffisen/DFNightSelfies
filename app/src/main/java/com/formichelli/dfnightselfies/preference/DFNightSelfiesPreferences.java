@@ -2,6 +2,7 @@ package com.formichelli.dfnightselfies.preference;
 
 import android.content.SharedPreferences;
 import android.os.Bundle;
+import android.os.Environment;
 import android.preference.CheckBoxPreference;
 import android.preference.ListPreference;
 import android.preference.Preference;
@@ -9,6 +10,7 @@ import android.preference.PreferenceActivity;
 import android.view.ViewGroup;
 
 import com.formichelli.dfnightselfies.R;
+import com.formichelli.dfnightselfies.WindowUtil;
 import com.google.android.gms.ads.AdRequest;
 import com.google.android.gms.ads.AdSize;
 import com.google.android.gms.ads.AdView;
@@ -18,6 +20,8 @@ import com.kizitonwose.colorpreference.ColorPreference;
 public class DFNightSelfiesPreferences extends PreferenceActivity implements SharedPreferences.OnSharedPreferenceChangeListener {
     @Override
     public void onCreate(Bundle savedInstanceState) {
+        WindowUtil.setupWindow(this);
+
         super.onCreate(savedInstanceState);
 
         // Load the preferences from an XML resource
@@ -65,7 +69,20 @@ public class DFNightSelfiesPreferences extends PreferenceActivity implements Sha
 
         if (preference instanceof CheckBoxPreference) {
             CheckBoxPreference cbp = (CheckBoxPreference) preference;
-            preference.setSummary(getString(cbp.isChecked() ? R.string.enabled : R.string.disabled));
+            if (preferenceKey.equals(getString(R.string.save_to_gallery_preference))) {
+                final String path;
+                if (getPreferenceScreen().getSharedPreferences().getBoolean(getString(R.string.save_to_gallery_preference), false)) {
+                    path = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DCIM).getAbsolutePath();
+                } else {
+                    path = Environment.getExternalStoragePublicDirectory(
+                            Environment.DIRECTORY_PICTURES).getAbsolutePath() + "/" + getString(R.string.save_to_gallery_folder);
+                }
+
+                preference.setSummary(getString(R.string.save_to_gallery_summary, Environment.getExternalStoragePublicDirectory(
+                        Environment.DIRECTORY_PICTURES) + path));
+            } else {
+                preference.setSummary(getString(cbp.isChecked() ? R.string.enabled : R.string.disabled));
+            }
         } else if (preference instanceof ListPreference) {
             ListPreference lp = (ListPreference) preference;
             preference.setSummary(getString(R.string.countdown_preference_summary, Integer.valueOf(lp.getValue())));

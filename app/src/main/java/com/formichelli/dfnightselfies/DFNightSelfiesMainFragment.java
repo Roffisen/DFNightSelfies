@@ -110,6 +110,7 @@ public class DFNightSelfiesMainFragment extends Fragment implements View.OnClick
 
     private int cameraRotation;
     private boolean rotationFix;
+    private boolean saveToGallery;
 
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
@@ -287,8 +288,8 @@ public class DFNightSelfiesMainFragment extends Fragment implements View.OnClick
         countdownStart = Integer.valueOf(sharedPreferences.getString(getString(R.string.countdown_preference), "3"));
         countdown.setText(getString(R.string.countdown_string_format, countdownStart));
 
+        saveToGallery = sharedPreferences.getBoolean(getString(R.string.save_to_gallery_preference), false);
         rotationFix = sharedPreferences.getBoolean(getString(R.string.rotation_fix_preference), false);
-
         shouldPlaySound = sharedPreferences.getBoolean(getString(R.string.shutter_sound_preference), false);
     }
 
@@ -673,7 +674,7 @@ public class DFNightSelfiesMainFragment extends Fragment implements View.OnClick
 
                 Bitmap bitmap = rotate(BitmapFactory.decodeByteArray(data, 0, data.length), cameraRotation);
 
-                       photoPreview.setImageBitmap(bitmap);
+                photoPreview.setImageBitmap(bitmap);
                 photoPreview.setVisibility(View.VISIBLE);
                 cameraSurface.setVisibility(View.GONE);
 
@@ -867,10 +868,16 @@ public class DFNightSelfiesMainFragment extends Fragment implements View.OnClick
             if (!Environment.getExternalStorageState().equals(Environment.MEDIA_MOUNTED))
                 throw new IOException();
 
-            File mediaStorageDir = new File(Environment.getExternalStoragePublicDirectory(
-                    Environment.DIRECTORY_PICTURES), "DFNightSelfies");
-            // This location works best if you want the created images to be shared
-            // between applications and persist after your app has been uninstalled.
+            final File mediaStorageDir;
+            if (saveToGallery) {
+                mediaStorageDir = Environment.getExternalStoragePublicDirectory(
+                        Environment.DIRECTORY_DCIM);
+            }
+            else
+            {
+                mediaStorageDir = new File(Environment.getExternalStoragePublicDirectory(
+                        Environment.DIRECTORY_PICTURES), getString(R.string.save_to_gallery_folder));
+            }
 
             // Create the storage directory if it does not exist
             if (!mediaStorageDir.exists())

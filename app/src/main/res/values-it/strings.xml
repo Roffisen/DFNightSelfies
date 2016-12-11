@@ -21,4 +21,6 @@
     <string name="rotation_fix_preference_title">Fix Rotazione</string>
     <string name="info_dialog_title">Info</string>
     <string name="info_dialog_summary">Mostra informazioni</string>
+    <string name="save_to_gallery_preference_title">Salva nella galleria</string>
+    <string name="save_to_gallery_summary">Le immagini saranno salvate in %s</string>
 </resources>

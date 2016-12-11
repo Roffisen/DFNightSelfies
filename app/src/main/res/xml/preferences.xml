@@ -2,6 +2,11 @@
 <PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto">
     <CheckBoxPreference
+        android:defaultValue="@bool/save_to_gallery_default"
+        android:key="@string/save_to_gallery_preference"
+        android:title="@string/save_to_gallery_preference_title" />
+
+    <CheckBoxPreference
         android:defaultValue="@bool/shutter_sound_default"
         android:key="@string/shutter_sound_preference"
         android:title="@string/shutter_sound_preference_title" />
