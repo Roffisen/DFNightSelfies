@@ -66,7 +66,7 @@ import static android.app.Activity.RESULT_CANCELED;
 import static android.content.Context.WINDOW_SERVICE;
 
 @SuppressWarnings("deprecation")
-public class DFNightSelfiesMainFragment extends Fragment implements View.OnClickListener {
+public class DFNightSelfiesMainFragment extends Fragment implements View.OnClickListener, Camera.PictureCallback {
     private final static String TAG = "DFNightSelfies";
     private final static double SCALE_FACTOR = 1.5;
     private final static int MAX_SCALE = 1;
@@ -86,10 +86,10 @@ public class DFNightSelfiesMainFragment extends Fragment implements View.OnClick
     ImageView photoPreview;
     SingleMediaScanner mediaScanner;
     OrientationEventListener orientationEventListener;
-    Camera.PictureCallback pictureTakenCallback = getPictureCallback();
     ScheduledExecutorService selfTimerScheduler = Executors.newSingleThreadScheduledExecutor();
     ScheduledFuture selfTimerFuture;
     private final static Map<String, Integer> permissionToIdMap;
+    protected Bitmap bitmap;
 
     boolean takingPicture;
     private boolean permissionGranted;
@@ -219,9 +219,7 @@ public class DFNightSelfiesMainFragment extends Fragment implements View.OnClick
                         Camera.Parameters cameraParameters = mCamera.getParameters();
                         cameraParameters.setRotation(cameraRotation);
                         mCamera.setParameters(cameraParameters);
-                    }
-                    catch (Exception e)
-                    {
+                    } catch (Exception e) {
                         // nothing to do
                     }
                 }
@@ -573,7 +571,7 @@ public class DFNightSelfiesMainFragment extends Fragment implements View.OnClick
         switch (keyCode) {
             case KeyEvent.KEYCODE_BACK:
                 if (photoActionButtons.getVisibility() == View.VISIBLE)
-                    discard();
+                    restartPreview();
                 else
                     getActivity().finish();
                 return true;
@@ -605,6 +603,7 @@ public class DFNightSelfiesMainFragment extends Fragment implements View.OnClick
     private void startPreview() {
         photoPreview.setVisibility(View.GONE);
         photoPreview.setImageResource(android.R.color.transparent);
+        bitmap = null;
         cameraSurface.setVisibility(View.VISIBLE);
         mCamera.startPreview();
     }
@@ -665,52 +664,48 @@ public class DFNightSelfiesMainFragment extends Fragment implements View.OnClick
         }
     };
 
-    protected Camera.PictureCallback getPictureCallback() {
-        return new Camera.PictureCallback() {
-            @Override
-            public void onPictureTaken(byte[] data, Camera camera) {
-                mCamera.stopPreview();
-                shutterFrame.setVisibility(View.GONE);
+    @Override
+    public void onPictureTaken(byte[] data, Camera camera) {
+        mCamera.stopPreview();
+        shutterFrame.setVisibility(View.GONE);
 
-                Bitmap bitmap = rotate(BitmapFactory.decodeByteArray(data, 0, data.length), cameraRotation);
+        bitmap = rotate(BitmapFactory.decodeByteArray(data, 0, data.length), cameraRotation);
 
-                photoPreview.setImageBitmap(bitmap);
-                photoPreview.setVisibility(View.VISIBLE);
-                cameraSurface.setVisibility(View.GONE);
+        photoPreview.setImageBitmap(bitmap);
+        photoPreview.setVisibility(View.VISIBLE);
+        cameraSurface.setVisibility(View.GONE);
 
-                final File pictureFile = getOutputMediaFile();
-                if (pictureFile == null) {
-                    log("Error creating media file, check storage permissions");
-                    return;
-                }
+        showButtons(true);
+    }
 
-                try {
-                    FileOutputStream fos = new FileOutputStream(pictureFile);
-                    bitmap.compress(Bitmap.CompressFormat.JPEG, 100, fos);
-                    fos.close();
-                } catch (FileNotFoundException e) {
-                    Log.d(TAG, "File not found: " + e.getMessage());
-                } catch (IOException e) {
-                    Log.d(TAG, "Error accessing file: " + e.getMessage());
-                }
+    private void saveBitmapToFile() {
+        final File pictureFile = getOutputMediaFile();
+        if (pictureFile == null) {
+            log("Error creating media file, check storage permissions");
+            return;
+        }
 
-                mediaScanner = new SingleMediaScanner(getActivity(), pictureFile);
-                showButtons(true);
-            }
+        try {
+            FileOutputStream fos = new FileOutputStream(pictureFile);
+            bitmap.compress(Bitmap.CompressFormat.JPEG, 100, fos);
+            fos.close();
+        } catch (FileNotFoundException e) {
+            Log.d(TAG, "File not found: " + e.getMessage());
+        } catch (IOException e) {
+            Log.d(TAG, "Error accessing file: " + e.getMessage());
+        }
 
-            private Bitmap rotate(final Bitmap bitmap, final int cameraRotation) {
-                if (rotationFix)
-                {
-                    Matrix matrix = new Matrix();
-                    matrix.setRotate(cameraRotation);
-                    return Bitmap.createBitmap(bitmap, 0, 0, bitmap.getWidth(), bitmap.getHeight(), matrix, true);
-                }
-                else
-                {
-                    return bitmap;
-                }
-            }
-        };
+        mediaScanner = new SingleMediaScanner(getActivity(), pictureFile);
+    }
+
+    private Bitmap rotate(final Bitmap bitmap, final int cameraRotation) {
+        if (rotationFix) {
+            Matrix matrix = new Matrix();
+            matrix.setRotate(cameraRotation);
+            return Bitmap.createBitmap(bitmap, 0, 0, bitmap.getWidth(), bitmap.getHeight(), matrix, true);
+        } else {
+            return bitmap;
+        }
     }
 
     protected void showButtons(boolean isPictureTaken) {
@@ -736,16 +731,18 @@ public class DFNightSelfiesMainFragment extends Fragment implements View.OnClick
 
         switch (v.getId()) {
             case R.id.save:
+                saveBitmapToFile();
                 restartPreview();
                 getActivity().setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_SENSOR);
                 break;
 
             case R.id.share:
+                saveBitmapToFile();
                 startShareIntent();
                 break;
 
             case R.id.delete:
-                discard();
+                restartPreview();
                 getActivity().setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_SENSOR);
                 break;
 
@@ -843,7 +840,7 @@ public class DFNightSelfiesMainFragment extends Fragment implements View.OnClick
                 getActivity().setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_REVERSE_LANDSCAPE);
                 break;
         }
-        mCamera.takePicture(shutterCallback, null, pictureTakenCallback);
+        mCamera.takePicture(shutterCallback, null, this);
     }
 
     @Override
@@ -872,9 +869,7 @@ public class DFNightSelfiesMainFragment extends Fragment implements View.OnClick
             if (saveToGallery) {
                 mediaStorageDir = Environment.getExternalStoragePublicDirectory(
                         Environment.DIRECTORY_DCIM);
-            }
-            else
-            {
+            } else {
                 mediaStorageDir = new File(Environment.getExternalStoragePublicDirectory(
                         Environment.DIRECTORY_PICTURES), getString(R.string.save_to_gallery_folder));
             }
@@ -889,12 +884,6 @@ public class DFNightSelfiesMainFragment extends Fragment implements View.OnClick
         } catch (IOException e) {
             return null;
         }
-    }
-
-    void discard() {
-        if (getActivity().getContentResolver().delete(mediaScanner.getShareUri(), null, null) == 0)
-            log("Cannot delete cached file: " + mediaScanner.getFile().getAbsolutePath());
-        restartPreview();
     }
 
     private class CountDown implements Runnable {
