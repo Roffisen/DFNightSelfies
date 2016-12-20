@@ -6,7 +6,7 @@
     <string name="save">Salva</string>
     <string name="share">Condividi</string>
     <string name="welcome">Benvenuto!</string>
-    <string name="welcome_text">Benvenuto su DF Night Selfies!\nTocca lo schermo per scattare un selfie.\nUsa le impostazioni per cambiare il colore di sfondo o la durata del timer.\nUsa i tasti volume per regolare la dimensione dell\'anteprima.\nSe la foto non è rotata correttamente sul tuo dispositivo, abilita l\'opzione \"Fix Rotazione\".</string>
+    <string name="welcome_text">Benvenuto su DF Night Selfies!\nTocca lo schermo per scattare un selfie.\nCondividi le tue foto con l\'hashtag #dfnightselfies\nUsa le impostazioni per cambiare il colore di sfondo o la durata del timer.\nUsa i tasti volume per regolare la dimensione dell\'anteprima.\nSe la foto non è rotata correttamente sul tuo dispositivo, abilita l\'opzione \"Fix Rotazione\".</string>
     <string name="ok">OK</string>
     <string name="cancel">Annulla</string>
     <string name="delete">Elimina</string>
