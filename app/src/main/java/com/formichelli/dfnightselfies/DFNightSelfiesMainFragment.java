@@ -295,11 +295,7 @@ public class DFNightSelfiesMainFragment extends Fragment implements View.OnClick
     public void onStop() {
         super.onStop();
 
-        if (mCamera != null) {
-            mCamera.stopPreview();
-            mCamera.release();
-            mCamera = null;
-        }
+        releaseCamera();
 
         orientationEventListener.disable();
     }
@@ -308,8 +304,7 @@ public class DFNightSelfiesMainFragment extends Fragment implements View.OnClick
     public void onDestroy() {
         super.onDestroy();
 
-        if (mCamera != null)
-            mCamera.release();
+        releaseCamera();
 
         if (selfTimerFuture != null)
             selfTimerFuture.cancel(true);
@@ -320,11 +315,7 @@ public class DFNightSelfiesMainFragment extends Fragment implements View.OnClick
             return false;
         }
 
-        if (mCamera != null) {
-            mCamera.stopPreview();
-            mCamera.release();
-            mCamera = null;
-        }
+        releaseCamera();
 
         Camera.CameraInfo mCameraInfo = new Camera.CameraInfo();
         for (int i = 0, l = Camera.getNumberOfCameras(); i < l; i++) {
@@ -352,6 +343,14 @@ public class DFNightSelfiesMainFragment extends Fragment implements View.OnClick
         }
 
         return false;
+    }
+
+    private void releaseCamera() {
+        if (mCamera != null) {
+            mCamera.stopPreview();
+            mCamera.release();
+            mCamera = null;
+        }
     }
 
     private boolean checkPermissions() {
@@ -629,13 +628,17 @@ public class DFNightSelfiesMainFragment extends Fragment implements View.OnClick
 
         @Override
         public void surfaceCreated(SurfaceHolder holder) {
+            if (mCamera == null) {
+                return;
+            }
+
             // The Surface has been created, now tell the camera where to draw the preview.
             try {
                 mCamera.setPreviewDisplay(holder);
                 if (photoActionButtons.getVisibility() == GONE) {
                     startPreview();
                 }
-            } catch (IOException e) {
+            } catch (Exception e) {
                 log("Error setting camera preview: " + e.getMessage());
             }
         }
