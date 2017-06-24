@@ -46,6 +46,7 @@ import java.util.concurrent.TimeUnit
 
 open class DFNightSelfiesMainFragment : Fragment(), View.OnClickListener, Camera.PictureCallback {
     private val TAG = "DFNightSelfies"
+    private val SHARE_TEXT = "#dfnightselfies"
     private val SCALE_FACTOR = 1.5
     private val MAX_SCALE = 1
     private val MIN_SCALE = -2
@@ -693,8 +694,9 @@ open class DFNightSelfiesMainFragment : Fragment(), View.OnClickListener, Camera
     private fun startShareIntent(pictureUri: Uri) {
         val shareIntent = Intent()
         shareIntent.action = Intent.ACTION_SEND
-        shareIntent.putExtra(Intent.EXTRA_STREAM, pictureUri)
         shareIntent.type = "image/*"
+        shareIntent.putExtra(Intent.EXTRA_STREAM, pictureUri)
+        shareIntent.putExtra(Intent.EXTRA_TEXT, SHARE_TEXT)
         startActivityForResult(Intent.createChooser(shareIntent, resources.getText(R.string.share)), 0)
         activity.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_SENSOR
     }
