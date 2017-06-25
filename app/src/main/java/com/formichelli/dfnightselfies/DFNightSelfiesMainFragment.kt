@@ -344,11 +344,7 @@ open class DFNightSelfiesMainFragment : Fragment(), View.OnClickListener, Camera
 
     internal fun scaleFactor(scaleCount: Int): Double {
         val shouldInvert = scaleCount < 0
-        val absScaleCount = if (shouldInvert) {
-            scaleCount
-        } else {
-            scaleCount
-        }
+        val absScaleCount = Math.abs(scaleCount)
 
         var scaleFactor = 1.0
         for (i in 1..absScaleCount) {
