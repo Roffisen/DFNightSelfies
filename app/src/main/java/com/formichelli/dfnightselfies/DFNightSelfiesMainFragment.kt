@@ -79,8 +79,8 @@ open class DFNightSelfiesMainFragment : Fragment(), View.OnClickListener, Camera
     private var rotationFix: Boolean = false
     private var saveToGallery: Boolean = false
 
-    open protected fun getPhotoActionButtons() : LinearLayout = photoActionButtons
-    
+    open protected fun getPhotoActionButtons(): LinearLayout = photoActionButtons
+
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View? {
         return inflater.inflate(R.layout.fragment_dfnight_selfies_main, container, false)
     }
@@ -191,7 +191,7 @@ open class DFNightSelfiesMainFragment : Fragment(), View.OnClickListener, Camera
             private fun getDisplayOrientation(displayOrientation: Int) = (displayOrientation + 90) % 360
         }
 
-        showButtons(false)
+        showButtons(Phase.BEFORE_TAKING)
     }
 
     override fun onStart() {
@@ -584,7 +584,7 @@ open class DFNightSelfiesMainFragment : Fragment(), View.OnClickListener, Camera
         photoPreview.visibility = View.VISIBLE
         cameraSurface.visibility = View.GONE
 
-        showButtons(true)
+        showButtons(Phase.AFTER_TAKING)
     }
 
     private fun saveBitmapToFile() {
@@ -616,17 +616,30 @@ open class DFNightSelfiesMainFragment : Fragment(), View.OnClickListener, Camera
         }
     }
 
-    protected fun showButtons(isPictureTaken: Boolean) {
-        val showIfPictureTaken = if (isPictureTaken) View.VISIBLE else View.GONE
-        val showIfPictureNotTaken = if (isPictureTaken) View.GONE else View.VISIBLE
+    protected fun showButtons(phase: Phase) {
+        when (phase)
+        {
+            Phase.BEFORE_TAKING -> {
+                getPhotoActionButtons().visibility = View.GONE
+                showBeforePhotoButtons(true)
+                countdown.text = getString(R.string.countdown_string_format, countdownStart)
+            }
 
-        getPhotoActionButtons().visibility = showIfPictureTaken
-        beforePhotoButtons?.forEach {
-            it.visibility = showIfPictureNotTaken
-        }
+            Phase.DURING_TIMER -> {
+                getPhotoActionButtons().visibility = View.GONE
+                showBeforePhotoButtons(false)
+                countdown.visibility = View.VISIBLE
+            }
 
-        if (!isPictureTaken) {
-            countdown.text = getString(R.string.countdown_string_format, countdownStart)
+            Phase.WHILE_TAKING -> {
+                getPhotoActionButtons().visibility = View.GONE
+                showBeforePhotoButtons(false)
+            }
+
+            Phase.AFTER_TAKING -> {
+                getPhotoActionButtons().visibility = View.VISIBLE
+                showBeforePhotoButtons(false)
+            }
         }
     }
 
@@ -674,16 +687,18 @@ open class DFNightSelfiesMainFragment : Fragment(), View.OnClickListener, Camera
         if (takingPicture) {
             takingPicture = false
             selfTimerFuture?.cancel(true)
-            showButtons(false)
+            showButtons(Phase.BEFORE_TAKING)
         } else {
             takingPicture = true
             selfTimerFuture = selfTimerScheduler.scheduleAtFixedRate(CountDown(countdownStart), 0, 1, TimeUnit.SECONDS)
 
-            beforePhotoButtons?.forEach {
-                if (it !== countdown) {
-                    it.visibility = View.GONE
-                }
-            }
+            showButtons(Phase.DURING_TIMER)
+        }
+    }
+
+    private fun showBeforePhotoButtons(show: Boolean) {
+        beforePhotoButtons?.forEach {
+            it.visibility = if (show) View.VISIBLE else View.GONE
         }
     }
 
@@ -701,20 +716,29 @@ open class DFNightSelfiesMainFragment : Fragment(), View.OnClickListener, Camera
         if (takingPicture) {
             return
         }
+
         val mCamera = mCamera ?: return
+
+        showButtons(Phase.WHILE_TAKING)
 
         takingPicture = true
         mediaScanner = null
-        when ((activity.getSystemService(WINDOW_SERVICE) as WindowManager).defaultDisplay.rotation) {
-            Surface.ROTATION_0 -> activity.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
+        try {
+            when ((activity.getSystemService(WINDOW_SERVICE) as WindowManager).defaultDisplay.rotation) {
+                Surface.ROTATION_0 -> activity.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
 
-            Surface.ROTATION_180 -> activity.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_REVERSE_PORTRAIT
+                Surface.ROTATION_180 -> activity.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_REVERSE_PORTRAIT
 
-            Surface.ROTATION_90 -> activity.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE
+                Surface.ROTATION_90 -> activity.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE
 
-            Surface.ROTATION_270 -> activity.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_REVERSE_LANDSCAPE
+                Surface.ROTATION_270 -> activity.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_REVERSE_LANDSCAPE
+            }
+            mCamera.takePicture(shutterCallback, null, this)
+        } catch (e: Exception) {
+            activity.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_SENSOR
+            takingPicture = false
+            showButtons(Phase.BEFORE_TAKING)
         }
-        mCamera.takePicture(shutterCallback, null, this)
     }
 
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
@@ -726,7 +750,7 @@ open class DFNightSelfiesMainFragment : Fragment(), View.OnClickListener, Camera
     protected fun restartPreview() {
         takingPicture = false
         mediaScanner = null
-        showButtons(false)
+        showButtons(Phase.BEFORE_TAKING)
         startPreview()
     }
 
@@ -756,14 +780,22 @@ open class DFNightSelfiesMainFragment : Fragment(), View.OnClickListener, Camera
     private inner class CountDown internal constructor(private var value: Int) : Runnable {
         override fun run() {
             activity.runOnUiThread {
-                countdown.text = value--.toString()
+                try {
+                    countdown.text = value--.toString()
 
-                if (value < 0) {
-                    selfTimerFuture?.cancel(true)
-                    takingPicture = false
-                    takePicture()
+                    if (value < 0) {
+                        selfTimerFuture?.cancel(true)
+                        takingPicture = false
+                        takePicture()
+                    }
+                } finally
+                {
                 }
             }
         }
     }
+}
+
+enum class Phase {
+    BEFORE_TAKING, DURING_TIMER, WHILE_TAKING, AFTER_TAKING
 }
