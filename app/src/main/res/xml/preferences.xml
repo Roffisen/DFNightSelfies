@@ -30,6 +30,11 @@
         android:key="@string/rotation_fix_preference"
         android:title="@string/rotation_fix_preference_title" />
 
+    <SwitchPreference
+        android:defaultValue="@bool/take_with_volume_default"
+        android:key="@string/take_with_volume_preference"
+        android:title="@string/take_with_volume_preference_title" />
+
     <com.formichelli.dfnightselfies.preference.SimpleDialogPreference
         android:title="@string/info_dialog_title"
         android:summary="@string/info_dialog_summary"

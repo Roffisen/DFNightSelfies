@@ -6,6 +6,7 @@ import android.os.Environment
 import android.preference.CheckBoxPreference
 import android.preference.ListPreference
 import android.preference.PreferenceActivity
+import android.preference.SwitchPreference
 import android.view.View
 import android.view.ViewGroup
 import com.formichelli.dfnightselfies.R
@@ -59,25 +60,37 @@ class DFNightSelfiesPreferences : PreferenceActivity(), SharedPreferences.OnShar
     private fun setSummary(preferenceKey: String) {
         val preference = findPreference(preferenceKey)
 
-        if (preference is CheckBoxPreference) {
-            if (preferenceKey == getString(R.string.save_to_gallery_preference)) {
-                val path: String
-                if (preferenceScreen.sharedPreferences.getBoolean(getString(R.string.save_to_gallery_preference), false)) {
-                    path = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DCIM).absolutePath
-                } else {
-                    path = Environment.getExternalStoragePublicDirectory(
-                            Environment.DIRECTORY_PICTURES).absolutePath + "/" + getString(R.string.save_to_gallery_folder)
-                }
+        when (preference) {
+            is CheckBoxPreference -> {
+                if (preferenceKey == getString(R.string.save_to_gallery_preference)) {
+                    val path: String
+                    if (preferenceScreen.sharedPreferences.getBoolean(getString(R.string.save_to_gallery_preference), false)) {
+                        path = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DCIM).absolutePath
+                    } else {
+                        path = Environment.getExternalStoragePublicDirectory(
+                                Environment.DIRECTORY_PICTURES).absolutePath + "/" + getString(R.string.save_to_gallery_folder)
+                    }
 
-                preference.setSummary(getString(R.string.save_to_gallery_summary, Environment.getExternalStoragePublicDirectory(
-                        Environment.DIRECTORY_PICTURES).toString() + path))
-            } else {
-                preference.setSummary(getString(if (preference.isChecked) R.string.enabled else R.string.disabled))
+                    preference.setSummary(getString(R.string.save_to_gallery_summary, Environment.getExternalStoragePublicDirectory(
+                            Environment.DIRECTORY_PICTURES).toString() + path))
+                } else {
+                    preference.setSummary(getString(if (preference.isChecked) R.string.enabled else R.string.disabled))
+                }
             }
-        } else if (preference is ListPreference) {
-            preference.setSummary(getString(R.string.countdown_preference_summary, Integer.valueOf(preference.value)))
-        } else if (preference is ColorPreference) {
-            preference.setSummary(intToHexColor(preference))
+            is ListPreference -> {
+                preference.setSummary(getString(R.string.countdown_preference_summary, Integer.valueOf(preference.value)))
+            }
+            is ColorPreference -> {
+                preference.setSummary(intToHexColor(preference))
+            }
+            is SwitchPreference -> {
+                if (preferenceKey == getString(R.string.take_with_volume_preference)) {
+                    val isEnabled = preferenceScreen.sharedPreferences.getBoolean(getString(R.string.take_with_volume_preference), false)
+                    preference.setSummary(getString(if (isEnabled) R.string.take_with_volume_summary_true else R.string.take_with_volume_summary_false))
+                } else {
+                    preference.setSummary(getString(if (preference.isChecked) R.string.enabled else R.string.disabled))
+                }
+            }
         }
     }
 

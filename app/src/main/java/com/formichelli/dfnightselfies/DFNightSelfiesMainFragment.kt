@@ -78,6 +78,7 @@ open class DFNightSelfiesMainFragment : Fragment(), View.OnClickListener, Camera
     private var cameraRotation: Int = 0
     private var rotationFix: Boolean = false
     private var saveToGallery: Boolean = false
+    private var takeWithVolume: Boolean = false
 
     open protected fun getPhotoActionButtons(): LinearLayout = photoActionButtons
 
@@ -218,6 +219,7 @@ open class DFNightSelfiesMainFragment : Fragment(), View.OnClickListener, Camera
         saveToGallery = sharedPreferences.getBoolean(getString(R.string.save_to_gallery_preference), false)
         rotationFix = sharedPreferences.getBoolean(getString(R.string.rotation_fix_preference), false)
         shouldPlaySound = sharedPreferences.getBoolean(getString(R.string.shutter_sound_preference), false)
+        takeWithVolume = sharedPreferences.getBoolean(getString(R.string.take_with_volume_preference), false)
     }
 
     override fun onStop() {
@@ -495,15 +497,13 @@ open class DFNightSelfiesMainFragment : Fragment(), View.OnClickListener, Camera
                 return true
             }
 
-            KeyEvent.KEYCODE_VOLUME_DOWN -> {
-                if (getPhotoActionButtons().visibility != View.VISIBLE)
-                    resizePreview(-1)
-                return true
-            }
-
-            KeyEvent.KEYCODE_VOLUME_UP -> {
-                if (getPhotoActionButtons().visibility != View.VISIBLE)
-                    resizePreview(1)
+            KeyEvent.KEYCODE_VOLUME_DOWN, KeyEvent.KEYCODE_VOLUME_UP -> {
+                if (takeWithVolume) {
+                    takePicture()
+                } else {
+                    if (getPhotoActionButtons().visibility != View.VISIBLE)
+                        resizePreview(if (keyCode == KeyEvent.KEYCODE_VOLUME_DOWN) -1 else 1)
+                }
                 return true
             }
         }
@@ -617,8 +617,7 @@ open class DFNightSelfiesMainFragment : Fragment(), View.OnClickListener, Camera
     }
 
     protected fun showButtons(phase: Phase) {
-        when (phase)
-        {
+        when (phase) {
             Phase.BEFORE_TAKING -> {
                 getPhotoActionButtons().visibility = View.GONE
                 showBeforePhotoButtons(true)
@@ -788,8 +787,7 @@ open class DFNightSelfiesMainFragment : Fragment(), View.OnClickListener, Camera
                         takingPicture = false
                         takePicture()
                     }
-                } finally
-                {
+                } finally {
                 }
             }
         }

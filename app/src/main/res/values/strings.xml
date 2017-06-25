@@ -35,4 +35,8 @@
     <string name="save_to_gallery_preference_title">Save to gallery</string>
     <string name="save_to_gallery_summary">Images will be saved to %s</string>
     <string name="save_to_gallery_folder" translatable="false">DFNightSelfies</string>
+    <string name="take_with_volume_preference" translatable="false">take_with_volume_preference</string>
+    <string name="take_with_volume_preference_title">Take picture with volume key</string>
+    <string name="take_with_volume_summary_true">Volume keys take picture</string>
+    <string name="take_with_volume_summary_false">Volume keys resize preview</string>
 </resources>
