@@ -6,6 +6,13 @@
         android:key="@string/save_to_gallery_preference"
         android:title="@string/save_to_gallery_preference_title" />
 
+    <ListPreference
+        android:defaultValue="@string/ratio_default"
+        android:entries="@array/ratio_list"
+        android:entryValues="@array/ratio_list"
+        android:key="@string/ratio_preference"
+        android:title="@string/ratio_preference_title" />
+
     <CheckBoxPreference
         android:defaultValue="@bool/shutter_sound_default"
         android:key="@string/shutter_sound_preference"

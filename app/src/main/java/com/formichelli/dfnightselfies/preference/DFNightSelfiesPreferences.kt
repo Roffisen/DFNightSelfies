@@ -78,7 +78,7 @@ class DFNightSelfiesPreferences : PreferenceActivity(), SharedPreferences.OnShar
                 }
             }
             is ListPreference -> {
-                preference.setSummary(getString(R.string.countdown_preference_summary, Integer.valueOf(preference.value)))
+                preference.setSummary(preference.value)
             }
             is ColorPreference -> {
                 preference.setSummary(intToHexColor(preference))

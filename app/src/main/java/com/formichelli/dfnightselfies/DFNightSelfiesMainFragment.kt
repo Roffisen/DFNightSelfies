@@ -31,6 +31,7 @@ import android.widget.FrameLayout
 import android.widget.LinearLayout
 import android.widget.Toast
 import com.formichelli.dfnightselfies.preference.DFNightSelfiesPreferences
+import com.formichelli.dfnightselfies.util.Ratio
 import com.formichelli.dfnightselfies.util.SingleMediaScanner
 import kotlinx.android.synthetic.main.buttons.*
 import kotlinx.android.synthetic.main.fragment_dfnight_selfies_main.*
@@ -239,9 +240,8 @@ open class DFNightSelfiesMainFragment : Fragment(), View.OnClickListener, Camera
     }
 
     private fun initializeCamera(): Boolean {
-        if (!activity.packageManager.hasSystemFeature(PackageManager.FEATURE_CAMERA)) {
+        if (!activity.packageManager.hasSystemFeature(PackageManager.FEATURE_CAMERA))
             return false
-        }
 
         releaseCamera()
 
@@ -362,13 +362,13 @@ open class DFNightSelfiesMainFragment : Fragment(), View.OnClickListener, Camera
 
     private fun initializePreviewSize() {
         val mCamera = mCamera ?: return
-        val sizes = mCamera.parameters.supportedPreviewSizes
 
         val display = activity.windowManager.defaultDisplay
-        val cameraPreviewWidth = display.width / 3
         val cameraPreviewHeight = display.height / 3
 
-        var bestSize = getBestSize(sizes)
+        val sharedPreferences = PreferenceManager.getDefaultSharedPreferences(activity) ?: return
+        val ratioFromPreference = Ratio.fromLabel(sharedPreferences.getString(getString(R.string.ratio_preference), "ANY"))
+        val (bestPictureSize, bestPreviewSize) = getBestSizes(mCamera, ratioFromPreference)
 
         val rotation = (activity.getSystemService(WINDOW_SERVICE) as WindowManager).defaultDisplay.rotation
         val (portrait, displayOrientation, cameraRotation) = when (rotation) {
@@ -396,20 +396,15 @@ open class DFNightSelfiesMainFragment : Fragment(), View.OnClickListener, Camera
         // rotate preview
         mCamera.setDisplayOrientation(displayOrientation)
 
-        // rotate taken photo
-        var mCameraParameters: Camera.Parameters = mCamera.parameters
-        mCameraParameters.setRotation(cameraRotation)
-        mCamera.parameters = mCameraParameters
-
+        System.out.println(bestPreviewSize.width.toString() + "x" + bestPreviewSize.height.toString())
         val cameraPreviewParams = cameraPreview.layoutParams as FrameLayout.LayoutParams
         if (portrait) {
-            cameraPreviewParams.width = (cameraPreviewHeight.toDouble() / bestSize.width * bestSize.height).toInt()
+            cameraPreviewParams.width = (cameraPreviewHeight.toDouble() / bestPreviewSize.width.toDouble() * bestPreviewSize.height.toDouble()).toInt()
             cameraPreviewParams.height = cameraPreviewHeight
         } else {
-            cameraPreviewParams.width = cameraPreviewWidth
-            cameraPreviewParams.height = (cameraPreviewWidth.toDouble() / bestSize.width * bestSize.height).toInt()
+            cameraPreviewParams.width = (cameraPreviewHeight.toDouble() / bestPreviewSize.height * bestPreviewSize.width).toInt()
+            cameraPreviewParams.height = cameraPreviewHeight
         }
-
 
         val photoPreviewParams = photoPreview.layoutParams as FrameLayout.LayoutParams
         photoPreviewParams.width = (cameraPreviewParams.width * SCALE_FACTOR).toInt()
@@ -432,32 +427,56 @@ open class DFNightSelfiesMainFragment : Fragment(), View.OnClickListener, Camera
         cameraPreviewParams.height *= scaleFactor.toInt()
         cameraPreview.layoutParams = cameraPreviewParams
 
-        mCameraParameters = mCamera.parameters
+        val mCameraParameters = mCamera.parameters
+        mCameraParameters.setRotation(cameraRotation)
         mCameraParameters.pictureFormat = PixelFormat.JPEG
-        bestSize = getBestSize(mCameraParameters.supportedPreviewSizes)
-        mCameraParameters.setPreviewSize(bestSize.width, bestSize.height)
-        bestSize = getBestSize(mCameraParameters.supportedPictureSizes)
-        mCameraParameters.setPictureSize(bestSize.width, bestSize.height)
+        mCameraParameters.setPreviewSize(bestPreviewSize.width, bestPreviewSize.height)
+        mCameraParameters.setPictureSize(bestPictureSize.width, bestPictureSize.height)
         mCamera.parameters = mCameraParameters
-
     }
 
-    private fun getBestSize(sizes: List<Camera.Size>): Camera.Size {
-        if (sizes.isEmpty())
+    private fun getBestSizes(camera: Camera, ratio: Ratio): Pair<Camera.Size, Camera.Size> {
+        val pictureSizes = camera.parameters.supportedPictureSizes
+        if (pictureSizes.isEmpty())
             throw IllegalStateException("No sizes available")
 
-        var maxSize: Camera.Size = sizes[0]
-        var maxSizeValue = maxSize.width * maxSize.height
+        val previewSizes = camera.parameters.supportedPreviewSizes
+        if (previewSizes.isEmpty())
+            throw IllegalStateException("No sizes available")
 
-        sizes.forEach {
+        var maxPictureSizeValue = 0
+        var bestPictureSize = pictureSizes[0]
+        var bestPictureRatio: Ratio? = null
+        pictureSizes.forEach {
+            if (!ratio.matches(it.width, it.height))
+                return@forEach
+
             val sizeValue = it.width * it.height
-            if (sizeValue > maxSizeValue) {
-                maxSize = it
-                maxSizeValue = sizeValue
+            if (sizeValue > maxPictureSizeValue) {
+                bestPictureRatio = Ratio.fromRatio(it.width, it.height)
+                bestPictureSize = it
+                maxPictureSizeValue = sizeValue
             }
         }
 
-        return maxSize
+        if (bestPictureRatio == null) {
+            return getBestSizes(camera, Ratio.ANY)
+        }
+
+        var maxPreviewSizeValue = 0
+        var bestPreviewSize = previewSizes[0]
+        previewSizes.forEach {
+            if (!bestPictureRatio!!.matches(it.width, it.height))
+                return@forEach
+
+            val sizeValue = it.width * it.height
+            if (sizeValue > maxPreviewSizeValue) {
+                bestPreviewSize = it
+                maxPreviewSizeValue = sizeValue
+            }
+        }
+
+        return Pair(bestPictureSize, bestPreviewSize)
     }
 
     private fun exitWithError(errorMessageId: Int) {

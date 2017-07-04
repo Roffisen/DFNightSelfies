@@ -39,4 +39,7 @@
     <string name="take_with_volume_preference_title">Take picture with volume key</string>
     <string name="take_with_volume_summary_true">Volume keys take picture</string>
     <string name="take_with_volume_summary_false">Volume keys resize preview</string>
+    <string name="ratio_default" translatable="false">Any</string>
+    <string name="ratio_preference" translatable="false">ratio</string>
+    <string name="ratio_preference_title">Ratio</string>
 </resources>
