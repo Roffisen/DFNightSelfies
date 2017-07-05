@@ -7,19 +7,16 @@ import android.net.Uri
 
 import java.io.File
 
-class SingleMediaScanner(context: Context, val file: File) : MediaScannerConnectionClient {
+class SingleMediaScanner(context: Context) : MediaScannerConnectionClient {
     private val mediaScannerConnection: MediaScannerConnection = MediaScannerConnection(context, this)
-    var shareUri: Uri? = null
-        private set
+    var file: File? = null
 
-    init {
+    fun scan(fileToScan: File) {
         mediaScannerConnection.connect()
+        file = fileToScan
     }
 
-    override fun onMediaScannerConnected() = mediaScannerConnection.scanFile(file.absolutePath, null)
+    override fun onMediaScannerConnected() = mediaScannerConnection.scanFile(file?.absolutePath, null)
 
-    override fun onScanCompleted(path: String, uri: Uri) {
-        shareUri = uri
-        mediaScannerConnection.disconnect()
-    }
+    override fun onScanCompleted(path: String, uri: Uri) = mediaScannerConnection.disconnect()
 }
