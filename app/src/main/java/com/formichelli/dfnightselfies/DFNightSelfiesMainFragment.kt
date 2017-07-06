@@ -306,11 +306,10 @@ open class DFNightSelfiesMainFragment : Fragment(), View.OnClickListener, Camera
         val cameraPreviewParams = cameraPreview.layoutParams as FrameLayout.LayoutParams
         if (portrait) {
             cameraPreviewParams.width = (cameraPreviewHeight.toDouble() / Ratio.doubleValue(bestPreviewSize.width, bestPreviewSize.height)).toInt()
-            cameraPreviewParams.height = cameraPreviewHeight
         } else {
             cameraPreviewParams.width = (cameraPreviewHeight.toDouble() * Ratio.doubleValue(bestPreviewSize.width, bestPreviewSize.height)).toInt()
-            cameraPreviewParams.height = cameraPreviewHeight
         }
+        cameraPreviewParams.height = cameraPreviewHeight
 
         val photoPreviewParams = photoPreview.layoutParams as FrameLayout.LayoutParams
         photoPreviewParams.width = (cameraPreviewParams.width * SCALE_FACTOR).toInt()
@@ -333,25 +332,15 @@ open class DFNightSelfiesMainFragment : Fragment(), View.OnClickListener, Camera
     private fun getRotationTriple(): Triple<Boolean, Int, Int> {
         val rotation = (activity.getSystemService(WINDOW_SERVICE) as WindowManager).defaultDisplay.rotation
         return when (rotation) {
-            Surface.ROTATION_0 -> {
-                // portrait
-                Triple(true, 90, 270)
-            }
-            Surface.ROTATION_180 -> {
-                // portrait (upside down)
-                Triple(true, 270, 90)
-            }
-            Surface.ROTATION_90 -> {
-                // landscape (down at left)
-                Triple(false, 0, 0)
-            }
-            Surface.ROTATION_270 -> {
-                // landscape (down at right)
-                Triple(false, 180, 180)
-            }
-            else -> {
-                Triple(true, 0, 0)
-            }
+            Surface.ROTATION_0 -> Triple(true, 90, 270) // portrait
+
+            Surface.ROTATION_180 -> Triple(true, 270, 90) // portrait (upside down)
+
+            Surface.ROTATION_90 -> Triple(false, 0, 0) // landscape (down at left)
+
+            Surface.ROTATION_270 -> Triple(false, 180, 180) // landscape (down at right)
+
+            else -> Triple(true, 0, 0)
         }
     }
 
@@ -476,9 +465,8 @@ open class DFNightSelfiesMainFragment : Fragment(), View.OnClickListener, Camera
             // The Surface has been created, now tell the camera where to draw the preview.
             try {
                 mCamera.setPreviewDisplay(holder)
-                if (getPhotoActionButtons().visibility == View.GONE) {
+                if (getPhotoActionButtons().visibility == View.GONE)
                     startPreview()
-                }
             } catch (e: Exception) {
                 log("Error setting camera preview: " + e.message)
             }
@@ -495,11 +483,9 @@ open class DFNightSelfiesMainFragment : Fragment(), View.OnClickListener, Camera
     }
 
     private val shutterCallback = Camera.ShutterCallback {
-        if (shouldPlaySound) {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN) {
+        if (shouldPlaySound)
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN)
                 MediaActionSound().play(MediaActionSound.SHUTTER_CLICK)
-            }
-        }
 
         shutterFrame.visibility = View.VISIBLE
     }
@@ -644,9 +630,8 @@ open class DFNightSelfiesMainFragment : Fragment(), View.OnClickListener, Camera
     }
 
     private fun takePicture() {
-        if (takingPicture) {
+        if (takingPicture)
             return
-        }
 
         val mCamera = mCamera ?: return
 
@@ -689,13 +674,10 @@ open class DFNightSelfiesMainFragment : Fragment(), View.OnClickListener, Camera
                 throw IOException()
 
             val mediaStorageDir =
-                    if (saveToGallery) {
-                        Environment.getExternalStoragePublicDirectory(
-                                Environment.DIRECTORY_DCIM)
-                    } else {
-                        File(Environment.getExternalStoragePublicDirectory(
-                                Environment.DIRECTORY_PICTURES), getString(R.string.save_to_gallery_folder))
-                    }
+                    if (saveToGallery)
+                        Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DCIM)
+                    else
+                        File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_PICTURES), getString(R.string.save_to_gallery_folder))
 
             if (!mediaStorageDir.exists() && !mediaStorageDir.mkdirs())
                 throw IOException()
@@ -713,16 +695,14 @@ open class DFNightSelfiesMainFragment : Fragment(), View.OnClickListener, Camera
         override fun onOrientationChanged(orientation: Int) {
             val mCamera = mCamera ?: return
 
-            if (orientation == android.view.OrientationEventListener.ORIENTATION_UNKNOWN) {
+            if (orientation == android.view.OrientationEventListener.ORIENTATION_UNKNOWN)
                 lastDisplayRotation = android.view.OrientationEventListener.ORIENTATION_UNKNOWN
-            }
 
             val displayRotation = getDisplayRotation()
-            if (lastDisplayRotation == displayRotation) {
+            if (lastDisplayRotation == displayRotation)
                 return
-            } else {
+            else
                 lastDisplayRotation = displayRotation
-            }
 
             synchronized(this) {
                 mCamera.setDisplayOrientation(getDisplayOrientation(displayRotation))
@@ -739,12 +719,9 @@ open class DFNightSelfiesMainFragment : Fragment(), View.OnClickListener, Camera
 
         private fun getCameraRotation(displayOrientation: Int): Int {
             return when (cameraFacing) {
-                Camera.CameraInfo.CAMERA_FACING_FRONT -> {
-                    (cameraOrientation - displayOrientation + 360) % 360
-                }
-                else -> {
-                    (cameraOrientation + displayOrientation) % 360
-                }
+                Camera.CameraInfo.CAMERA_FACING_FRONT -> (cameraOrientation - displayOrientation + 360) % 360
+
+                else -> (cameraOrientation + displayOrientation) % 360
             }
         }
 
