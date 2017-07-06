@@ -65,7 +65,6 @@ open class DFNightSelfiesMainFragment : Fragment(), View.OnClickListener, Camera
     internal var selfTimerFuture: ScheduledFuture<*>? = null
     protected var bitmap: Bitmap? = null
 
-    internal var takingPicture: Boolean = false
     private var permissionGranted = false
 
     internal var scale: Int = 0
@@ -81,11 +80,37 @@ open class DFNightSelfiesMainFragment : Fragment(), View.OnClickListener, Camera
     private var saveToGallery: Boolean = false
     private var takeWithVolume: Boolean = false
 
+    private var phase: Phase? = null
+        set(value) {
+            val fieldValue = value ?: return
+
+            field = fieldValue
+            showButtons(fieldValue)
+            enableRotation(fieldValue == Phase.BEFORE_TAKING)
+        }
+
+    private fun enableRotation(enable: Boolean) {
+        activity.requestedOrientation = if (enable) {
+            ActivityInfo.SCREEN_ORIENTATION_SENSOR
+        } else {
+            when ((activity.getSystemService(WINDOW_SERVICE) as WindowManager).defaultDisplay.rotation) {
+                Surface.ROTATION_0 -> ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
+
+                Surface.ROTATION_180 -> ActivityInfo.SCREEN_ORIENTATION_REVERSE_PORTRAIT
+
+                Surface.ROTATION_90 -> ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE
+
+                Surface.ROTATION_270 -> ActivityInfo.SCREEN_ORIENTATION_REVERSE_LANDSCAPE
+
+                else -> activity.requestedOrientation
+            }
+        }
+    }
+
     open protected fun getPhotoActionButtons(): LinearLayout = photoActionButtons
 
-    override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View? {
-        return inflater.inflate(R.layout.fragment_dfnight_selfies_main, container, false)
-    }
+    override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View? =
+            inflater.inflate(R.layout.fragment_dfnight_selfies_main, container, false)
 
     override fun onActivityCreated(savedInstanceState: Bundle?) {
         super.onActivityCreated(savedInstanceState)
@@ -139,13 +164,13 @@ open class DFNightSelfiesMainFragment : Fragment(), View.OnClickListener, Camera
 
         mediaScanner = SingleMediaScanner(activity)
 
-        showButtons(Phase.BEFORE_TAKING)
+        phase = Phase.BEFORE_TAKING
     }
 
     override fun onStart() {
         super.onStart()
 
-        if (getPhotoActionButtons().visibility == View.GONE) {
+        if (phase == Phase.BEFORE_TAKING) {
             if (mCamera == null) {
                 if (checkPermissions()) {
                     initializeCamera()
@@ -240,9 +265,7 @@ open class DFNightSelfiesMainFragment : Fragment(), View.OnClickListener, Camera
         return true
     }
 
-    private fun requestPermissions() {
-        ActivityCompat.requestPermissions(activity, permissionToIdMap.keys.toTypedArray(), 0)
-    }
+    private fun requestPermissions() = ActivityCompat.requestPermissions(activity, permissionToIdMap.keys.toTypedArray(), 0)
 
     override fun onRequestPermissionsResult(requestCode: Int,
                                             permissions: Array<String>, grantResults: IntArray) {
@@ -262,19 +285,16 @@ open class DFNightSelfiesMainFragment : Fragment(), View.OnClickListener, Camera
 
     private fun resizePreview(scaleCount: Int) {
         val effectiveScaleCount =
-                if (scaleCount + scale > MAX_SCALE) {
-                    // don't scale more than MAX_SCALE
-                    MAX_SCALE - scale
-                } else if (scaleCount + scale < MIN_SCALE) {
-                    // don't scale less than MIN_SCALE
-                    MIN_SCALE - scale
-                } else {
-                    scaleCount
-                }
 
-        if (effectiveScaleCount == 0) {
+                if (scaleCount + scale > MAX_SCALE) // don't scale more than MAX_SCALE
+                    MAX_SCALE - scale
+                else if (scaleCount + scale < MIN_SCALE) // don't scale less than MIN_SCALE
+                    MIN_SCALE - scale
+                else
+                    scaleCount
+
+        if (effectiveScaleCount == 0)
             return
-        }
 
         val scaleFactor = Math.pow(SCALE_FACTOR, effectiveScaleCount.toDouble())
 
@@ -304,11 +324,11 @@ open class DFNightSelfiesMainFragment : Fragment(), View.OnClickListener, Camera
         mCamera.setDisplayOrientation(displayOrientation)
 
         val cameraPreviewParams = cameraPreview.layoutParams as FrameLayout.LayoutParams
-        if (portrait) {
-            cameraPreviewParams.width = (cameraPreviewHeight.toDouble() / Ratio.doubleValue(bestPreviewSize.width, bestPreviewSize.height)).toInt()
-        } else {
-            cameraPreviewParams.width = (cameraPreviewHeight.toDouble() * Ratio.doubleValue(bestPreviewSize.width, bestPreviewSize.height)).toInt()
-        }
+        cameraPreviewParams.width =
+                if (portrait)
+                    (cameraPreviewHeight.toDouble() / Ratio.doubleValue(bestPreviewSize.width, bestPreviewSize.height)).toInt()
+                else
+                    (cameraPreviewHeight.toDouble() * Ratio.doubleValue(bestPreviewSize.width, bestPreviewSize.height)).toInt()
         cameraPreviewParams.height = cameraPreviewHeight
 
         val photoPreviewParams = photoPreview.layoutParams as FrameLayout.LayoutParams
@@ -412,7 +432,7 @@ open class DFNightSelfiesMainFragment : Fragment(), View.OnClickListener, Camera
     fun onKeyUp(keyCode: Int): Boolean {
         when (keyCode) {
             KeyEvent.KEYCODE_BACK -> {
-                if (getPhotoActionButtons().visibility == View.VISIBLE)
+                if (phase == Phase.AFTER_TAKING)
                     restartPreview()
                 else
                     activity.finish()
@@ -502,7 +522,7 @@ open class DFNightSelfiesMainFragment : Fragment(), View.OnClickListener, Camera
         photoPreview.visibility = View.VISIBLE
         cameraSurface.visibility = View.GONE
 
-        showButtons(Phase.AFTER_TAKING)
+        phase = Phase.AFTER_TAKING
     }
 
     private fun saveBitmapToFile() {
@@ -601,15 +621,12 @@ open class DFNightSelfiesMainFragment : Fragment(), View.OnClickListener, Camera
     private fun openSettings() = startActivity(Intent(activity, DFNightSelfiesPreferences::class.java))
 
     private fun startSelfTimer() {
-        if (takingPicture) {
-            takingPicture = false
+        if (phase != Phase.BEFORE_TAKING) {
+            phase = Phase.BEFORE_TAKING
             selfTimerFuture?.cancel(true)
-            showButtons(Phase.BEFORE_TAKING)
         } else {
-            takingPicture = true
+            phase = Phase.DURING_TIMER
             selfTimerFuture = selfTimerScheduler.scheduleAtFixedRate(CountDown(countdownStart), 0, 1, TimeUnit.SECONDS)
-
-            showButtons(Phase.DURING_TIMER)
         }
     }
 
@@ -630,29 +647,17 @@ open class DFNightSelfiesMainFragment : Fragment(), View.OnClickListener, Camera
     }
 
     private fun takePicture() {
-        if (takingPicture)
+        if (phase != Phase.BEFORE_TAKING && phase != Phase.DURING_TIMER)
             return
 
         val mCamera = mCamera ?: return
+        phase = Phase.WHILE_TAKING
 
-        showButtons(Phase.WHILE_TAKING)
-
-        takingPicture = true
         try {
-            when ((activity.getSystemService(WINDOW_SERVICE) as WindowManager).defaultDisplay.rotation) {
-                Surface.ROTATION_0 -> activity.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
-
-                Surface.ROTATION_180 -> activity.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_REVERSE_PORTRAIT
-
-                Surface.ROTATION_90 -> activity.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE
-
-                Surface.ROTATION_270 -> activity.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_REVERSE_LANDSCAPE
-            }
             mCamera.takePicture(shutterCallback, null, this)
         } catch (e: Exception) {
+            restartPreview()
             activity.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_SENSOR
-            takingPicture = false
-            showButtons(Phase.BEFORE_TAKING)
         }
     }
 
@@ -663,8 +668,7 @@ open class DFNightSelfiesMainFragment : Fragment(), View.OnClickListener, Camera
     }
 
     protected fun restartPreview() {
-        takingPicture = false
-        showButtons(Phase.BEFORE_TAKING)
+        phase = Phase.BEFORE_TAKING
         startPreview()
     }
 
@@ -748,7 +752,6 @@ open class DFNightSelfiesMainFragment : Fragment(), View.OnClickListener, Camera
 
                     if (value < 0) {
                         selfTimerFuture?.cancel(true)
-                        takingPicture = false
                         takePicture()
                     }
                 } finally {

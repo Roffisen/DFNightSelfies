@@ -39,12 +39,10 @@ class DFNightSelfiesFromIntentFragment : DFNightSelfiesMainFragment() {
 
                 activity.finish()
             }
-            R.id.discard -> {
-                restartPreview()
-            }
-            else -> {
-                super.onClick(v)
-            }
+
+            R.id.discard -> restartPreview()
+
+            else -> super.onClick(v)
         }
     }
 }
