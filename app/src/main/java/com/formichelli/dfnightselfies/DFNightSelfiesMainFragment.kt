@@ -644,8 +644,8 @@ open class DFNightSelfiesMainFragment : Fragment(), View.OnClickListener, Camera
         activity.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_SENSOR
     }
 
-    private fun takePicture() {
-        if (phase != Phase.BEFORE_TAKING && phase != Phase.DURING_TIMER)
+    private fun takePicture(force: Boolean = false) {
+        if (!force && phase != Phase.BEFORE_TAKING)
             return
 
         val mCamera = mCamera ?: return
@@ -749,7 +749,7 @@ open class DFNightSelfiesMainFragment : Fragment(), View.OnClickListener, Camera
 
                     if (value < 0) {
                         selfTimerFuture?.cancel(true)
-                        takePicture()
+                        takePicture(true)
                     }
                 } finally {
                 }
