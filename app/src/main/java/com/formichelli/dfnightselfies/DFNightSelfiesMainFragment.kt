@@ -336,9 +336,9 @@ open class DFNightSelfiesMainFragment : Fragment(), View.OnClickListener, Camera
         photoPreviewParams.height = (cameraPreviewParams.height * SCALE_FACTOR).toInt()
         photoPreview.layoutParams = photoPreviewParams
 
-        val scaleFactor = Math.pow(SCALE_FACTOR, scale.toDouble()).toInt()
-        cameraPreviewParams.width *= scaleFactor
-        cameraPreviewParams.height *= scaleFactor
+        val scaleFactor = Math.pow(SCALE_FACTOR, scale.toDouble())
+        cameraPreviewParams.width = (cameraPreviewParams.width * scaleFactor).toInt()
+        cameraPreviewParams.height = (cameraPreviewParams.height * scaleFactor).toInt()
         cameraPreview.layoutParams = cameraPreviewParams
 
         val mCameraParameters = mCamera.parameters
