@@ -589,7 +589,6 @@ open class DFNightSelfiesMainFragment : Fragment(), View.OnClickListener, Camera
             R.id.save -> {
                 saveBitmapToFile()
                 restartPreview()
-                activity.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_SENSOR
             }
 
             R.id.share -> {
@@ -600,7 +599,6 @@ open class DFNightSelfiesMainFragment : Fragment(), View.OnClickListener, Camera
 
             R.id.delete -> {
                 restartPreview()
-                activity.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_SENSOR
             }
 
             R.id.settings -> openSettings()
@@ -657,7 +655,6 @@ open class DFNightSelfiesMainFragment : Fragment(), View.OnClickListener, Camera
             mCamera.takePicture(shutterCallback, null, this)
         } catch (e: Exception) {
             restartPreview()
-            activity.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_SENSOR
         }
     }
 
