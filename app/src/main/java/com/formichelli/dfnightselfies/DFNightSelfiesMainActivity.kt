@@ -7,7 +7,7 @@ import android.view.KeyEvent
 import com.google.android.gms.ads.MobileAds
 
 open class DFNightSelfiesMainActivity : Activity() {
-    internal var fragment: DFNightSelfiesMainFragment = DFNightSelfiesMainFragment()
+    private val fragment: DFNightSelfiesMainFragment = DFNightSelfiesMainFragment()
 
     public override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
