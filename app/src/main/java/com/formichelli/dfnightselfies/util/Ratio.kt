@@ -1,7 +1,7 @@
 package com.formichelli.dfnightselfies.util
 
 enum class Ratio(val label: String, val width: Int, val height: Int) {
-    ANY("ANY", 0, 0), _16_9("16:9", 16, 9), _4_3("4:3", 4, 3), _1_1("1:1", 1, 1);
+    ANY("ANY", 0, 0), W16H9("16:9", 16, 9), W4H3("4:3", 4, 3), W1H1("1:1", 1, 1);
 
     fun matches(width: Int, height: Int) = matches(doubleValue(width, height))
 

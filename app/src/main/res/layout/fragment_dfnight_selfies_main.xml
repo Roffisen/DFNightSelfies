@@ -13,7 +13,8 @@
         android:layout_gravity="left|top"
         android:layout_margin="10dp"
         android:background="#000000FF"
-        android:src="@drawable/settings" />
+        android:src="@drawable/settings"
+        android:contentDescription="@string/settings" />
 
     <ImageButton
         android:id="@+id/gallery"
@@ -22,7 +23,8 @@
         android:layout_gravity="right|top"
         android:layout_margin="10dp"
         android:background="#000000FF"
-        android:src="@drawable/gallery" />
+        android:src="@drawable/gallery"
+        android:contentDescription="@string/gallery" />
 
     <TextView
         android:id="@+id/countdown"
@@ -45,7 +47,8 @@
         android:id="@+id/photoPreview"
         android:layout_width="0dp"
         android:layout_height="0dp"
-        android:layout_gravity="center_horizontal|center_vertical" />
+        android:layout_gravity="center_horizontal|center_vertical"
+        android:contentDescription="@string/preview" />
 
     <include layout="@layout/buttons" />
 

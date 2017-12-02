@@ -27,4 +27,7 @@
     <string name="take_with_volume_summary_false">I tasti volume ridimensionano l\'anteprima</string>
     <string name="take_with_volume_summary_true">I tasti volume scattano la foto</string>
     <string name="ratio_preference_title">Ratio</string>
+    <string name="settings">Impostazioni</string>
+    <string name="gallery">Galleria</string>
+    <string name="preview">Anteprima</string>
 </resources>
