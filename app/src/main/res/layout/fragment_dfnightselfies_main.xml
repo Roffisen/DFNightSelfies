@@ -3,7 +3,6 @@
     android:id="@+id/main_layout"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="#ffffff"
     tools:context=".DFNightSelfiesMainActivity">
 
     <ImageButton
@@ -14,7 +13,8 @@
         android:layout_margin="10dp"
         android:background="#000000FF"
         android:src="@drawable/settings"
-        android:contentDescription="@string/settings" />
+        android:contentDescription="@string/settings"
+        tools:ignore="RtlHardcoded" />
 
     <ImageButton
         android:id="@+id/gallery"
@@ -24,7 +24,8 @@
         android:layout_margin="10dp"
         android:background="#000000FF"
         android:src="@drawable/gallery"
-        android:contentDescription="@string/gallery" />
+        android:contentDescription="@string/gallery"
+        tools:ignore="RtlHardcoded" />
 
     <TextView
         android:id="@+id/countdown"
@@ -33,7 +34,8 @@
         android:layout_gravity="right|bottom"
         android:layout_margin="10dp"
         android:text="@string/countdown_string_format"
-        android:textSize="@dimen/countdown_text_size" />
+        android:textSize="@dimen/countdown_text_size"
+        tools:ignore="RtlHardcoded" />
 
     <!-- frame containing camera preview -->
     <FrameLayout

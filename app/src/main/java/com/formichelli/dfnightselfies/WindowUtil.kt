@@ -9,7 +9,7 @@ object WindowUtil {
         // hide title
         activity.requestWindowFeature(Window.FEATURE_NO_TITLE)
 
-        // hide statusbar if not on lollipop
+        // hide status bar if not on lollipop
         if (android.os.Build.VERSION.SDK_INT < 21)
             activity.window.setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN, WindowManager.LayoutParams.FLAG_FULLSCREEN)
 

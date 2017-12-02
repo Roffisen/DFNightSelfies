@@ -34,7 +34,7 @@ import com.formichelli.dfnightselfies.preference.DFNightSelfiesPreferences
 import com.formichelli.dfnightselfies.util.Ratio
 import com.formichelli.dfnightselfies.util.SingleMediaScanner
 import kotlinx.android.synthetic.main.buttons.*
-import kotlinx.android.synthetic.main.fragment_dfnight_selfies_main.*
+import kotlinx.android.synthetic.main.fragment_dfnightselfies_main.*
 import java.io.File
 import java.io.FileNotFoundException
 import java.io.FileOutputStream
@@ -46,11 +46,11 @@ import java.util.concurrent.ScheduledFuture
 import java.util.concurrent.TimeUnit
 
 open class DFNightSelfiesMainFragment : Fragment(), View.OnClickListener, Camera.PictureCallback {
-    private val TAG = "DFNightSelfies"
-    private val SHARE_TEXT = "#dfnightselfies"
-    private val SCALE_FACTOR = 1.5
-    private val MAX_SCALE = 1
-    private val MIN_SCALE = -2
+    private val logTag = "DFNightSelfies"
+    private val shareText = "#dfnightselfies"
+    private val scaleFactor = 1.5
+    private val maxScale = 1
+    private val minScale = -2
     private val permissionToIdMap = mutableMapOf(
             Manifest.permission.CAMERA to 1,
             Manifest.permission.WRITE_EXTERNAL_STORAGE to 2
@@ -110,7 +110,7 @@ open class DFNightSelfiesMainFragment : Fragment(), View.OnClickListener, Camera
     open protected fun getPhotoActionButtons(): LinearLayout = photoActionButtons
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View? =
-            inflater.inflate(R.layout.fragment_dfnight_selfies_main, container, false)
+            inflater.inflate(R.layout.fragment_dfnightselfies_main, container, false)
 
     override fun onActivityCreated(savedInstanceState: Bundle?) {
         super.onActivityCreated(savedInstanceState)
@@ -285,17 +285,17 @@ open class DFNightSelfiesMainFragment : Fragment(), View.OnClickListener, Camera
 
     private fun resizePreview(scaleCount: Int) {
         val effectiveScaleCount = when {
-        // don't scale more than MAX_SCALE
-            scaleCount + scale > MAX_SCALE -> MAX_SCALE - scale
-        // don't scale less than MIN_SCALE
-            scaleCount + scale < MIN_SCALE -> MIN_SCALE - scale
+        // don't scale more than maxScale
+            scaleCount + scale > maxScale -> maxScale - scale
+        // don't scale less than minScale
+            scaleCount + scale < minScale -> minScale - scale
             else -> scaleCount
         }
 
         if (effectiveScaleCount == 0)
             return
 
-        val scaleFactor = Math.pow(SCALE_FACTOR, effectiveScaleCount.toDouble())
+        val scaleFactor = Math.pow(scaleFactor, effectiveScaleCount.toDouble())
 
         val cameraPreviewParams = cameraPreview.layoutParams as FrameLayout.LayoutParams
         cameraPreviewParams.width = (cameraPreview.width * scaleFactor).toInt()
@@ -331,11 +331,11 @@ open class DFNightSelfiesMainFragment : Fragment(), View.OnClickListener, Camera
         cameraPreviewParams.height = cameraPreviewHeight
 
         val photoPreviewParams = photoPreview.layoutParams as FrameLayout.LayoutParams
-        photoPreviewParams.width = (cameraPreviewParams.width * SCALE_FACTOR).toInt()
-        photoPreviewParams.height = (cameraPreviewParams.height * SCALE_FACTOR).toInt()
+        photoPreviewParams.width = (cameraPreviewParams.width * scaleFactor).toInt()
+        photoPreviewParams.height = (cameraPreviewParams.height * scaleFactor).toInt()
         photoPreview.layoutParams = photoPreviewParams
 
-        val scaleFactor = Math.pow(SCALE_FACTOR, scale.toDouble())
+        val scaleFactor = Math.pow(scaleFactor, scale.toDouble())
         cameraPreviewParams.width = (cameraPreviewParams.width * scaleFactor).toInt()
         cameraPreviewParams.height = (cameraPreviewParams.height * scaleFactor).toInt()
         cameraPreview.layoutParams = cameraPreviewParams
@@ -414,7 +414,7 @@ open class DFNightSelfiesMainFragment : Fragment(), View.OnClickListener, Camera
     }
 
     private fun log(message: String) {
-        Log.e(TAG, message)
+        Log.e(logTag, message)
         Toast.makeText(activity, message, Toast.LENGTH_LONG).show()
     }
 
@@ -537,9 +537,9 @@ open class DFNightSelfiesMainFragment : Fragment(), View.OnClickListener, Camera
             fos.close()
             mediaScanner.scan(pictureFile)
         } catch (e: FileNotFoundException) {
-            Log.d(TAG, "File not found: " + e.message)
+            Log.d(logTag, "File not found: " + e.message)
         } catch (e: IOException) {
-            Log.d(TAG, "Error accessing file: " + e.message)
+            Log.d(logTag, "Error accessing file: " + e.message)
         }
     }
 
@@ -636,7 +636,7 @@ open class DFNightSelfiesMainFragment : Fragment(), View.OnClickListener, Camera
         shareIntent.action = Intent.ACTION_SEND
         shareIntent.type = "image/*"
         shareIntent.putExtra(Intent.EXTRA_STREAM, pictureUri)
-        shareIntent.putExtra(Intent.EXTRA_TEXT, SHARE_TEXT)
+        shareIntent.putExtra(Intent.EXTRA_TEXT, shareText)
         startActivityForResult(Intent.createChooser(shareIntent, resources.getText(R.string.share)), 0)
         activity.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_SENSOR
     }

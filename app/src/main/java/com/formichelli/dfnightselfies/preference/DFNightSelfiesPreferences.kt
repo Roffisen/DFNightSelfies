@@ -1,3 +1,5 @@
+@file:Suppress("DEPRECATION")
+
 package com.formichelli.dfnightselfies.preference
 
 import android.content.SharedPreferences
@@ -63,11 +65,10 @@ class DFNightSelfiesPreferences : PreferenceActivity(), SharedPreferences.OnShar
         when (preference) {
             is CheckBoxPreference -> {
                 if (preferenceKey == getString(R.string.save_to_gallery_preference)) {
-                    val path: String
-                    if (preferenceScreen.sharedPreferences.getBoolean(getString(R.string.save_to_gallery_preference), false)) {
-                        path = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DCIM).absolutePath
+                    val path = if (preferenceScreen.sharedPreferences.getBoolean(getString(R.string.save_to_gallery_preference), false)) {
+                        Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DCIM).absolutePath
                     } else {
-                        path = Environment.getExternalStoragePublicDirectory(
+                        Environment.getExternalStoragePublicDirectory(
                                 Environment.DIRECTORY_PICTURES).absolutePath + "/" + getString(R.string.save_to_gallery_folder)
                     }
 

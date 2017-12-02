@@ -10,7 +10,7 @@
     android:visibility="invisible"
     android:layout_marginBottom="10dp"
     android:layout_gravity="bottom"
-    tools:showIn="@layout/fragment_dfnight_selfies_main">
+    tools:showIn="@layout/fragment_dfnightselfies_main">
 
     <ImageButton
         android:id="@+id/accept"
