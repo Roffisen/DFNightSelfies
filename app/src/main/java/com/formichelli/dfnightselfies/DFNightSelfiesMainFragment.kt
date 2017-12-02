@@ -57,20 +57,20 @@ open class DFNightSelfiesMainFragment : Fragment(), View.OnClickListener, Camera
     )
 
     private var cameraFacing: Int = 0
-    lateinit internal var beforePhotoButtons: Array<View>
-    lateinit internal var cameraSurface: CameraPreview
-    lateinit internal var orientationEventListener: OrientationEventListener
-    lateinit internal var mediaScanner: SingleMediaScanner
-    internal var selfTimerScheduler = Executors.newSingleThreadScheduledExecutor()
+    private lateinit var beforePhotoButtons: Array<View>
+    private lateinit var cameraSurface: CameraPreview
+    private lateinit var orientationEventListener: OrientationEventListener
+    private lateinit var mediaScanner: SingleMediaScanner
+    private var selfTimerScheduler = Executors.newSingleThreadScheduledExecutor()
     internal var selfTimerFuture: ScheduledFuture<*>? = null
     protected var bitmap: Bitmap? = null
 
     private var permissionGranted = false
 
-    internal var scale: Int = 0
+    private var scale: Int = 0
     internal var color: Int = 0
-    internal var countdownStart: Int = 0
-    internal var shouldPlaySound: Boolean = false
+    private var countdownStart: Int = 0
+    private var shouldPlaySound: Boolean = false
 
     internal var mCamera: Camera? = null
     internal var cameraOrientation: Int = 0
@@ -284,14 +284,13 @@ open class DFNightSelfiesMainFragment : Fragment(), View.OnClickListener, Camera
     }
 
     private fun resizePreview(scaleCount: Int) {
-        val effectiveScaleCount =
-
-                if (scaleCount + scale > MAX_SCALE) // don't scale more than MAX_SCALE
-                    MAX_SCALE - scale
-                else if (scaleCount + scale < MIN_SCALE) // don't scale less than MIN_SCALE
-                    MIN_SCALE - scale
-                else
-                    scaleCount
+        val effectiveScaleCount = when {
+        // don't scale more than MAX_SCALE
+            scaleCount + scale > MAX_SCALE -> MAX_SCALE - scale
+        // don't scale less than MIN_SCALE
+            scaleCount + scale < MIN_SCALE -> MIN_SCALE - scale
+            else -> scaleCount
+        }
 
         if (effectiveScaleCount == 0)
             return
@@ -419,7 +418,7 @@ open class DFNightSelfiesMainFragment : Fragment(), View.OnClickListener, Camera
         Toast.makeText(activity, message, Toast.LENGTH_LONG).show()
     }
 
-    fun setBackgroundColor(color: Int) {
+    private fun setBackgroundColor(color: Int) {
         shutterFrame.setBackgroundColor(color)
         view.setBackgroundColor(color)
 
@@ -545,38 +544,36 @@ open class DFNightSelfiesMainFragment : Fragment(), View.OnClickListener, Camera
     }
 
     private fun rotate(bitmap: Bitmap, cameraRotation: Int): Bitmap {
-        if (rotationFix) {
+        return if (rotationFix) {
             val matrix = Matrix()
             matrix.setRotate(cameraRotation.toFloat())
-            return Bitmap.createBitmap(bitmap, 0, 0, bitmap.width, bitmap.height, matrix, true)
+            Bitmap.createBitmap(bitmap, 0, 0, bitmap.width, bitmap.height, matrix, true)
         } else {
-            return bitmap
+            bitmap
         }
     }
 
-    protected fun showButtons(phase: Phase) {
-        when (phase) {
-            Phase.BEFORE_TAKING -> {
-                getPhotoActionButtons().visibility = View.GONE
-                showBeforePhotoButtons(true)
-                countdown.text = getString(R.string.countdown_string_format, countdownStart)
-            }
+    private fun showButtons(phase: Phase) = when (phase) {
+        Phase.BEFORE_TAKING -> {
+            getPhotoActionButtons().visibility = View.GONE
+            showBeforePhotoButtons(true)
+            countdown.text = getString(R.string.countdown_string_format, countdownStart)
+        }
 
-            Phase.DURING_TIMER -> {
-                getPhotoActionButtons().visibility = View.GONE
-                showBeforePhotoButtons(false)
-                countdown.visibility = View.VISIBLE
-            }
+        Phase.DURING_TIMER -> {
+            getPhotoActionButtons().visibility = View.GONE
+            showBeforePhotoButtons(false)
+            countdown.visibility = View.VISIBLE
+        }
 
-            Phase.WHILE_TAKING -> {
-                getPhotoActionButtons().visibility = View.GONE
-                showBeforePhotoButtons(false)
-            }
+        Phase.WHILE_TAKING -> {
+            getPhotoActionButtons().visibility = View.GONE
+            showBeforePhotoButtons(false)
+        }
 
-            Phase.AFTER_TAKING -> {
-                getPhotoActionButtons().visibility = View.VISIBLE
-                showBeforePhotoButtons(false)
-            }
+        Phase.AFTER_TAKING -> {
+            getPhotoActionButtons().visibility = View.VISIBLE
+            showBeforePhotoButtons(false)
         }
     }
 
@@ -718,12 +715,9 @@ open class DFNightSelfiesMainFragment : Fragment(), View.OnClickListener, Camera
             }
         }
 
-        private fun getCameraRotation(displayOrientation: Int): Int {
-            return when (cameraFacing) {
-                Camera.CameraInfo.CAMERA_FACING_FRONT -> (cameraOrientation - displayOrientation + 360) % 360
-
-                else -> (cameraOrientation + displayOrientation) % 360
-            }
+        private fun getCameraRotation(displayOrientation: Int): Int = when (cameraFacing) {
+            Camera.CameraInfo.CAMERA_FACING_FRONT -> (cameraOrientation - displayOrientation + 360) % 360
+            else -> (cameraOrientation + displayOrientation) % 360
         }
 
         private fun getDisplayRotation() = when (display.rotation) {
