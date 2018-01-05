@@ -72,7 +72,7 @@ open class DFNightSelfiesMainFragment : Fragment(), View.OnClickListener, Camera
     private var countdownStart: Int = 0
     private var shouldPlaySound: Boolean = false
 
-    internal var mCamera: Camera? = null
+    internal var camera: Camera? = null
     internal var cameraOrientation: Int = 0
 
     private var cameraRotation: Int = 0
@@ -145,7 +145,7 @@ open class DFNightSelfiesMainFragment : Fragment(), View.OnClickListener, Camera
             }.show()
         } else {
             cameraPreview.viewTreeObserver.addOnGlobalLayoutListener {
-                if (permissionGranted && mCamera == null) {
+                if (permissionGranted && camera == null) {
                     initializeCamera()
                 }
             }
@@ -171,7 +171,7 @@ open class DFNightSelfiesMainFragment : Fragment(), View.OnClickListener, Camera
         super.onStart()
 
         if (phase == Phase.BEFORE_TAKING) {
-            if (mCamera == null) {
+            if (camera == null) {
                 if (checkPermissions()) {
                     initializeCamera()
                 }
@@ -224,8 +224,8 @@ open class DFNightSelfiesMainFragment : Fragment(), View.OnClickListener, Camera
             }
 
             return try {
-                mCamera = Camera.open(i)
-                val mCamera = mCamera ?: return false
+                camera = Camera.open(i)
+                val mCamera = camera ?: return false
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN_MR1) {
                     mCamera.enableShutterSound(false)
                 }
@@ -248,9 +248,9 @@ open class DFNightSelfiesMainFragment : Fragment(), View.OnClickListener, Camera
     }
 
     private fun releaseCamera() {
-        mCamera?.stopPreview()
-        mCamera?.release()
-        mCamera = null
+        camera?.stopPreview()
+        camera?.release()
+        camera = null
     }
 
     private fun checkPermissions(): Boolean {
@@ -309,7 +309,7 @@ open class DFNightSelfiesMainFragment : Fragment(), View.OnClickListener, Camera
     }
 
     private fun initializePreviewSize() {
-        val mCamera = mCamera ?: return
+        val mCamera = camera ?: return
 
         val display = activity.windowManager.defaultDisplay
         val cameraPreviewHeight = display.height / 3
@@ -455,7 +455,7 @@ open class DFNightSelfiesMainFragment : Fragment(), View.OnClickListener, Camera
     fun onKeyDown(keyCode: Int) = keyCode == KeyEvent.KEYCODE_VOLUME_DOWN || keyCode == KeyEvent.KEYCODE_VOLUME_UP
 
     private fun startPreview() {
-        val mCamera = mCamera ?: return
+        val mCamera = camera ?: return
 
         photoPreview.visibility = View.GONE
         photoPreview.setImageResource(android.R.color.transparent)
@@ -510,7 +510,7 @@ open class DFNightSelfiesMainFragment : Fragment(), View.OnClickListener, Camera
     }
 
     override fun onPictureTaken(data: ByteArray, camera: Camera) {
-        val mCamera = mCamera ?: return
+        val mCamera = this.camera ?: return
 
         mCamera.stopPreview()
         shutterFrame.visibility = View.GONE
@@ -645,11 +645,11 @@ open class DFNightSelfiesMainFragment : Fragment(), View.OnClickListener, Camera
         if (!force && phase != Phase.BEFORE_TAKING)
             return
 
-        val mCamera = mCamera ?: return
+        val camera = camera ?: return
         phase = Phase.WHILE_TAKING
 
         try {
-            mCamera.takePicture(shutterCallback, null, this)
+            camera.takePicture(shutterCallback, null, this)
         } catch (e: Exception) {
             restartPreview()
         }
@@ -657,7 +657,7 @@ open class DFNightSelfiesMainFragment : Fragment(), View.OnClickListener, Camera
 
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         if (resultCode == RESULT_CANCELED)
-            if (mCamera != null)
+            if (camera != null)
                 restartPreview()
     }
 
@@ -691,7 +691,7 @@ open class DFNightSelfiesMainFragment : Fragment(), View.OnClickListener, Camera
         internal var lastDisplayRotation: Int = 0
 
         override fun onOrientationChanged(orientation: Int) {
-            val mCamera = mCamera ?: return
+            val camera = camera ?: return
 
             if (orientation == android.view.OrientationEventListener.ORIENTATION_UNKNOWN)
                 lastDisplayRotation = android.view.OrientationEventListener.ORIENTATION_UNKNOWN
@@ -703,12 +703,12 @@ open class DFNightSelfiesMainFragment : Fragment(), View.OnClickListener, Camera
                 lastDisplayRotation = displayRotation
 
             synchronized(this) {
-                mCamera.setDisplayOrientation(getDisplayOrientation(displayRotation))
+                camera.setDisplayOrientation(getDisplayOrientation(displayRotation))
                 cameraRotation = getCameraRotation(displayRotation)
                 try {
-                    val cameraParameters = mCamera.parameters
+                    val cameraParameters = camera.parameters
                     cameraParameters.setRotation(cameraRotation)
-                    mCamera.parameters = cameraParameters
+                    camera.parameters = cameraParameters
                 } catch (e: Exception) {
                     // nothing to do
                 }
