@@ -25,6 +25,7 @@ import android.os.Environment
 import android.preference.PreferenceManager
 import android.support.v4.app.ActivityCompat
 import android.support.v4.content.ContextCompat
+import android.support.v4.content.FileProvider
 import android.util.Log
 import android.view.*
 import android.widget.FrameLayout
@@ -590,8 +591,7 @@ open class DFNightSelfiesMainFragment : Fragment(), View.OnClickListener, Camera
 
             R.id.share -> {
                 saveBitmapToFile()
-                val shareUri = Uri.parse("file://" + mediaScanner.file?.absolutePath)
-                startShareIntent(shareUri)
+                startShareIntent(getShareUri())
             }
 
             R.id.delete -> {
@@ -605,6 +605,8 @@ open class DFNightSelfiesMainFragment : Fragment(), View.OnClickListener, Camera
             R.id.gallery -> showGallery()
         }
     }
+
+    private fun getShareUri() = FileProvider.getUriForFile(activity, BuildConfig.APPLICATION_ID + ".provider", File(mediaScanner.file?.absolutePath))
 
     private fun showGallery() {
         val mIntent = Intent()
