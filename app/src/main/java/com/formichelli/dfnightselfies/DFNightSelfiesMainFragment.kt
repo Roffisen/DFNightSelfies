@@ -3,7 +3,6 @@
 package com.formichelli.dfnightselfies
 
 import android.Manifest
-import android.app.Activity.RESULT_CANCELED
 import android.app.AlertDialog
 import android.app.Fragment
 import android.content.Context
@@ -655,12 +654,6 @@ open class DFNightSelfiesMainFragment : Fragment(), View.OnClickListener, Camera
         } catch (e: Exception) {
             restartPreview()
         }
-    }
-
-    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
-        if (resultCode == RESULT_CANCELED)
-            if (camera != null)
-                restartPreview()
     }
 
     protected fun restartPreview() {

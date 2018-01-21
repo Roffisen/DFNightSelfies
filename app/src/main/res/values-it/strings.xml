@@ -19,7 +19,7 @@
     <string name="info_dialog_summary">Mostra informazioni</string>
     <string name="save_to_gallery_preference_title">Salva nella galleria</string>
     <string name="save_to_gallery_summary">Le immagini saranno salvate in %s</string>
-    <string name="take_with_volume_preference_title">Scatta foto con tasti volume</string>
+    <string name="take_with_volume_preference_title">Scatta con tasti volume</string>
     <string name="take_with_volume_summary_false">I tasti volume ridimensionano l\'anteprima</string>
     <string name="take_with_volume_summary_true">I tasti volume scattano la foto</string>
     <string name="ratio_preference_title">Ratio</string>
