@@ -12,7 +12,6 @@ import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.Matrix
-import android.graphics.PixelFormat
 import android.hardware.Camera
 import android.hardware.SensorManager
 import android.media.MediaActionSound
@@ -24,12 +23,11 @@ import android.preference.PreferenceManager
 import android.support.v4.content.FileProvider
 import android.util.Log
 import android.view.*
-import android.widget.FrameLayout
 import android.widget.LinearLayout
 import android.widget.Toast
 import com.formichelli.dfnightselfies.preference.DFNightSelfiesPreferences
 import com.formichelli.dfnightselfies.util.PermissionManager
-import com.formichelli.dfnightselfies.util.Ratio
+import com.formichelli.dfnightselfies.util.PreviewSizeManager
 import com.formichelli.dfnightselfies.util.SingleMediaScanner
 import kotlinx.android.synthetic.main.buttons.*
 import kotlinx.android.synthetic.main.fragment_dfnightselfies_main.*
@@ -46,12 +44,9 @@ import java.util.concurrent.TimeUnit
 open class DFNightSelfiesMainFragment : Fragment(), View.OnClickListener, Camera.PictureCallback {
     private val logTag = "DFNightSelfies"
     private val shareText = "#dfnightselfies"
-    private val scaleFactor = 1.5
-    private val maxScale = 1
-    private val minScale = -2
 
     private lateinit var permissionManager: PermissionManager
-    private var cameraFacing: Int = 0
+    private lateinit var previewSizeManager: PreviewSizeManager
     private lateinit var beforePhotoButtons: Array<View>
     private lateinit var cameraSurface: CameraPreview
     private lateinit var orientationEventListener: OrientationEventListener
@@ -60,7 +55,6 @@ open class DFNightSelfiesMainFragment : Fragment(), View.OnClickListener, Camera
     internal var selfTimerFuture: ScheduledFuture<*>? = null
     protected var bitmap: Bitmap? = null
 
-    private var scale: Int = 0
     internal var color: Int = 0
     private var countdownStart: Int = 0
     private var shouldPlaySound: Boolean = false
@@ -146,9 +140,7 @@ open class DFNightSelfiesMainFragment : Fragment(), View.OnClickListener, Camera
             }
         }
 
-        scale = sharedPreferences.getInt("scaleFactor", 0)
-
-        cameraFacing = Camera.CameraInfo.CAMERA_FACING_FRONT
+        previewSizeManager = PreviewSizeManager(activity, sharedPreferences, cameraPreview, photoPreview)
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
             activity.window.statusBarColor = color
@@ -214,7 +206,7 @@ open class DFNightSelfiesMainFragment : Fragment(), View.OnClickListener, Camera
         val mCameraInfo = Camera.CameraInfo()
         for (i in 0 until Camera.getNumberOfCameras()) {
             Camera.getCameraInfo(i, mCameraInfo)
-            if (mCameraInfo.facing != cameraFacing) {
+            if (mCameraInfo.facing != Camera.CameraInfo.CAMERA_FACING_FRONT) {
                 continue
             }
 
@@ -225,7 +217,7 @@ open class DFNightSelfiesMainFragment : Fragment(), View.OnClickListener, Camera
                     mCamera.enableShutterSound(false)
                 }
 
-                initializePreviewSize()
+                previewSizeManager.initializePreviewSize(mCamera)
 
                 cameraSurface = CameraPreview(activity, mCamera)
                 cameraPreview.removeAllViews()
@@ -262,129 +254,6 @@ open class DFNightSelfiesMainFragment : Fragment(), View.OnClickListener, Camera
         } else {
             exitWithError(R.string.cant_get_front_camera)
         }
-    }
-
-    private fun resizePreview(scaleCount: Int) {
-        val effectiveScaleCount = when {
-        // don't scale more than maxScale
-            scaleCount + scale > maxScale -> maxScale - scale
-        // don't scale less than minScale
-            scaleCount + scale < minScale -> minScale - scale
-            else -> scaleCount
-        }
-
-        if (effectiveScaleCount == 0)
-            return
-
-        val scaleFactor = Math.pow(scaleFactor, effectiveScaleCount.toDouble())
-
-        val cameraPreviewParams = cameraPreview.layoutParams as FrameLayout.LayoutParams
-        cameraPreviewParams.width = (cameraPreview.width * scaleFactor).toInt()
-        cameraPreviewParams.height = (cameraPreview.height * scaleFactor).toInt()
-        cameraPreview.layoutParams = cameraPreviewParams
-
-        scale += effectiveScaleCount
-
-        val sharedPreferences = PreferenceManager.getDefaultSharedPreferences(activity) ?: return
-        sharedPreferences.edit().putInt("scaleFactor", scale).apply()
-    }
-
-    private fun initializePreviewSize() {
-        val mCamera = camera ?: return
-
-        val display = activity.windowManager.defaultDisplay
-        val cameraPreviewHeight = display.height / 3
-
-        val sharedPreferences = PreferenceManager.getDefaultSharedPreferences(activity) ?: return
-        val ratioFromPreference = Ratio.fromLabel(sharedPreferences.getString(getString(R.string.ratio_preference), "ANY"))
-        val (bestPictureSize, bestPreviewSize) = getBestSizes(mCamera, ratioFromPreference)
-
-        val (portrait, displayOrientation, cameraRotation) = getRotationTriple()
-
-        mCamera.setDisplayOrientation(displayOrientation)
-
-        val cameraPreviewParams = cameraPreview.layoutParams as FrameLayout.LayoutParams
-        cameraPreviewParams.width =
-                if (portrait)
-                    (cameraPreviewHeight.toDouble() / Ratio.doubleValue(bestPreviewSize.width, bestPreviewSize.height)).toInt()
-                else
-                    (cameraPreviewHeight.toDouble() * Ratio.doubleValue(bestPreviewSize.width, bestPreviewSize.height)).toInt()
-        cameraPreviewParams.height = cameraPreviewHeight
-
-        val photoPreviewParams = photoPreview.layoutParams as FrameLayout.LayoutParams
-        photoPreviewParams.width = (cameraPreviewParams.width * scaleFactor).toInt()
-        photoPreviewParams.height = (cameraPreviewParams.height * scaleFactor).toInt()
-        photoPreview.layoutParams = photoPreviewParams
-
-        val scaleFactor = Math.pow(scaleFactor, scale.toDouble())
-        cameraPreviewParams.width = (cameraPreviewParams.width * scaleFactor).toInt()
-        cameraPreviewParams.height = (cameraPreviewParams.height * scaleFactor).toInt()
-        cameraPreview.layoutParams = cameraPreviewParams
-
-        val mCameraParameters = mCamera.parameters
-        mCameraParameters.setRotation(cameraRotation)
-        mCameraParameters.pictureFormat = PixelFormat.JPEG
-        mCameraParameters.setPreviewSize(bestPreviewSize.width, bestPreviewSize.height)
-        mCameraParameters.setPictureSize(bestPictureSize.width, bestPictureSize.height)
-        mCamera.parameters = mCameraParameters
-    }
-
-    private fun getRotationTriple(): Triple<Boolean, Int, Int> {
-        val rotation = (activity.getSystemService(WINDOW_SERVICE) as WindowManager).defaultDisplay.rotation
-        return when (rotation) {
-            Surface.ROTATION_0 -> Triple(true, 90, 270) // portrait
-
-            Surface.ROTATION_180 -> Triple(true, 270, 90) // portrait (upside down)
-
-            Surface.ROTATION_90 -> Triple(false, 0, 0) // landscape (down at left)
-
-            Surface.ROTATION_270 -> Triple(false, 180, 180) // landscape (down at right)
-
-            else -> Triple(true, 0, 0)
-        }
-    }
-
-    private fun getBestSizes(camera: Camera, ratio: Ratio): Pair<Camera.Size, Camera.Size> {
-        val pictureSizes = camera.parameters.supportedPictureSizes
-        if (pictureSizes.isEmpty())
-            throw IllegalStateException("No picture sizes available")
-
-        val previewSizes = camera.parameters.supportedPreviewSizes
-        if (previewSizes.isEmpty())
-            throw IllegalStateException("No preview sizes available")
-
-        var maxPictureSizeValue = 0
-        var bestPictureSize = pictureSizes[0]
-        var bestPictureRatio: Ratio? = null
-        pictureSizes.forEach {
-            if (!ratio.matches(it.width, it.height))
-                return@forEach
-
-            val sizeValue = it.width * it.height
-            if (sizeValue > maxPictureSizeValue) {
-                bestPictureRatio = Ratio.fromRatio(it.width, it.height)
-                bestPictureSize = it
-                maxPictureSizeValue = sizeValue
-            }
-        }
-
-        if (bestPictureRatio == null)
-            return getBestSizes(camera, Ratio.ANY)
-
-        var maxPreviewSizeValue = 0
-        var bestPreviewSize = previewSizes[0]
-        previewSizes.forEach {
-            if (!bestPictureRatio!!.matches(it.width, it.height))
-                return@forEach
-
-            val sizeValue = it.width * it.height
-            if (sizeValue > maxPreviewSizeValue) {
-                bestPreviewSize = it
-                maxPreviewSizeValue = sizeValue
-            }
-        }
-
-        return Pair(bestPictureSize, bestPreviewSize)
     }
 
     private fun exitWithError(errorMessageId: Int) {
@@ -424,7 +293,7 @@ open class DFNightSelfiesMainFragment : Fragment(), View.OnClickListener, Camera
                 if (takeWithVolume)
                     takePicture()
                 else if (getPhotoActionButtons().visibility != View.VISIBLE)
-                    resizePreview(if (keyCode == KeyEvent.KEYCODE_VOLUME_DOWN) -1 else 1)
+                    previewSizeManager.resizePreview(if (keyCode == KeyEvent.KEYCODE_VOLUME_DOWN) -1 else 1)
 
                 return true
             }
@@ -691,10 +560,7 @@ open class DFNightSelfiesMainFragment : Fragment(), View.OnClickListener, Camera
             }
         }
 
-        private fun getCameraRotation(displayOrientation: Int): Int = when (cameraFacing) {
-            Camera.CameraInfo.CAMERA_FACING_FRONT -> (cameraOrientation - displayOrientation + 360) % 360
-            else -> (cameraOrientation + displayOrientation) % 360
-        }
+        private fun getCameraRotation(displayOrientation: Int): Int = (cameraOrientation - displayOrientation + 360) % 360
 
         private fun getDisplayRotation() = when (display.rotation) {
             Surface.ROTATION_0 -> 0
