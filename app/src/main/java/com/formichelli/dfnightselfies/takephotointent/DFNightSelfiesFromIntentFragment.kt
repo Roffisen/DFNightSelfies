@@ -21,7 +21,7 @@ class DFNightSelfiesFromIntentFragment : DFNightSelfiesMainFragment() {
     override fun onClick(v: View) {
         when (v.id) {
             R.id.accept -> {
-                val bitmap = bitmap ?: return
+                val bitmap = bitmapManager.bitmap ?: return
                 val saveUri = activity.intent.extras.getParcelable<Uri>(MediaStore.EXTRA_OUTPUT) ?: return
 
                 try {
