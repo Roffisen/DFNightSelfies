@@ -9,33 +9,20 @@ import android.content.Context.WINDOW_SERVICE
 import android.content.Intent
 import android.content.pm.ActivityInfo
 import android.content.pm.PackageManager
-import android.graphics.Bitmap
-import android.graphics.BitmapFactory
-import android.graphics.Matrix
 import android.hardware.Camera
-import android.hardware.SensorManager
 import android.media.MediaActionSound
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
-import android.os.Environment
 import android.preference.PreferenceManager
 import android.support.v4.content.FileProvider
 import android.view.*
 import android.widget.LinearLayout
 import com.formichelli.dfnightselfies.preference.DFNightSelfiesPreferences
-import com.formichelli.dfnightselfies.util.LogHelper
-import com.formichelli.dfnightselfies.util.PermissionManager
-import com.formichelli.dfnightselfies.util.PreviewSizeManager
-import com.formichelli.dfnightselfies.util.SingleMediaScanner
+import com.formichelli.dfnightselfies.util.*
 import kotlinx.android.synthetic.main.buttons.*
 import kotlinx.android.synthetic.main.fragment_dfnightselfies_main.*
 import java.io.File
-import java.io.FileNotFoundException
-import java.io.FileOutputStream
-import java.io.IOException
-import java.text.SimpleDateFormat
-import java.util.*
 import java.util.concurrent.Executors
 import java.util.concurrent.ScheduledFuture
 import java.util.concurrent.TimeUnit
@@ -47,22 +34,18 @@ open class DFNightSelfiesMainFragment : Fragment(), View.OnClickListener, Camera
     private lateinit var previewSizeManager: PreviewSizeManager
     private lateinit var beforePhotoButtons: Array<View>
     private lateinit var cameraSurface: CameraPreview
-    private lateinit var orientationEventListener: OrientationEventListener
+    private lateinit var orientationEventListener: MyOrientationEventListener
     private lateinit var mediaScanner: SingleMediaScanner
+    private lateinit var bitmapManager: BitmapManager
     private var selfTimerScheduler = Executors.newSingleThreadScheduledExecutor()
     internal var selfTimerFuture: ScheduledFuture<*>? = null
-    protected var bitmap: Bitmap? = null
 
     internal var color: Int = 0
     private var countdownStart: Int = 0
     private var shouldPlaySound: Boolean = false
 
-    internal var camera: Camera? = null
-    internal var cameraOrientation: Int = 0
+    private var camera: Camera? = null
 
-    private var cameraRotation: Int = 0
-    private var rotationFix: Boolean = false
-    private var saveToGallery: Boolean = false
     private var takeWithVolume: Boolean = false
 
     private var phase: Phase? = null
@@ -100,9 +83,13 @@ open class DFNightSelfiesMainFragment : Fragment(), View.OnClickListener, Camera
     override fun onActivityCreated(savedInstanceState: Bundle?) {
         super.onActivityCreated(savedInstanceState)
 
+        val sharedPreferences = PreferenceManager.getDefaultSharedPreferences(activity) ?: return
+
         permissionManager = PermissionManager(activity)
 
-        val sharedPreferences = PreferenceManager.getDefaultSharedPreferences(activity) ?: return
+        previewSizeManager = PreviewSizeManager(activity, sharedPreferences, cameraPreview, photoPreview)
+
+        bitmapManager = BitmapManager(activity, sharedPreferences)
 
         view.setOnClickListener(this)
 
@@ -138,14 +125,12 @@ open class DFNightSelfiesMainFragment : Fragment(), View.OnClickListener, Camera
             }
         }
 
-        previewSizeManager = PreviewSizeManager(activity, sharedPreferences, cameraPreview, photoPreview)
-
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
             activity.window.statusBarColor = color
             activity.window.navigationBarColor = color
         }
 
-        orientationEventListener = MyOrientationEventListener()
+        orientationEventListener = MyOrientationEventListener(activity)
 
         mediaScanner = SingleMediaScanner(activity)
 
@@ -173,8 +158,6 @@ open class DFNightSelfiesMainFragment : Fragment(), View.OnClickListener, Camera
         countdownStart = Integer.valueOf(sharedPreferences.getString(getString(R.string.countdown_preference), "3")) ?: 3
         countdown.text = getString(R.string.countdown_string_format, countdownStart)
 
-        saveToGallery = sharedPreferences.getBoolean(getString(R.string.save_to_gallery_preference), false)
-        rotationFix = sharedPreferences.getBoolean(getString(R.string.rotation_fix_preference), false)
         shouldPlaySound = sharedPreferences.getBoolean(getString(R.string.shutter_sound_preference), false)
         takeWithVolume = sharedPreferences.getBoolean(getString(R.string.take_with_volume_preference), false)
     }
@@ -220,7 +203,7 @@ open class DFNightSelfiesMainFragment : Fragment(), View.OnClickListener, Camera
                 cameraSurface = CameraPreview(activity, mCamera)
                 cameraPreview.removeAllViews()
                 cameraPreview.addView(cameraSurface)
-                cameraOrientation = mCameraInfo.orientation
+                orientationEventListener.setCamera(mCamera, mCameraInfo.orientation)
                 orientationEventListener.onOrientationChanged(OrientationEventListener.ORIENTATION_UNKNOWN)
                 true
             } catch (e: RuntimeException) {
@@ -240,14 +223,7 @@ open class DFNightSelfiesMainFragment : Fragment(), View.OnClickListener, Camera
 
     override fun onRequestPermissionsResult(requestCode: Int,
                                             permissions: Array<String>, grantResults: IntArray) {
-        if (grantResults.isNotEmpty()) {
-            grantResults.forEach {
-                if (it != PackageManager.PERMISSION_GRANTED) {
-                    exitWithError(R.string.cant_get_front_camera)
-                    return
-                }
-            }
-
+        if (permissionManager.checkPermissionResult(grantResults)) {
             initializeCamera()
         } else {
             exitWithError(R.string.cant_get_front_camera)
@@ -302,14 +278,11 @@ open class DFNightSelfiesMainFragment : Fragment(), View.OnClickListener, Camera
 
         photoPreview.visibility = View.GONE
         photoPreview.setImageResource(android.R.color.transparent)
-        bitmap = null
+        bitmapManager.bitmap = null
         cameraSurface.visibility = View.VISIBLE
         mCamera.startPreview()
     }
 
-    /**
-     * A basic Camera preview class
-     */
     inner class CameraPreview(context: Context, private val mCamera: Camera?) : SurfaceView(context), SurfaceHolder.Callback {
         private val mHolder: SurfaceHolder = holder
 
@@ -358,42 +331,13 @@ open class DFNightSelfiesMainFragment : Fragment(), View.OnClickListener, Camera
         mCamera.stopPreview()
         shutterFrame.visibility = View.GONE
 
-        bitmap = rotate(BitmapFactory.decodeByteArray(data, 0, data.size), cameraRotation)
+        bitmapManager.fromByteArray(data, orientationEventListener.cameraRotation)
 
-        photoPreview.setImageBitmap(bitmap)
+        photoPreview.setImageBitmap(bitmapManager.bitmap)
         photoPreview.visibility = View.VISIBLE
         cameraSurface.visibility = View.GONE
 
         phase = Phase.AFTER_TAKING
-    }
-
-    private fun saveBitmapToFile() {
-        val pictureFile = getOutputMediaFile()
-        if (pictureFile == null) {
-            LogHelper.log(activity, "Error creating media file, check storage permissions")
-            return
-        }
-
-        try {
-            val fos = FileOutputStream(pictureFile)
-            bitmap?.compress(Bitmap.CompressFormat.JPEG, 100, fos)
-            fos.close()
-            mediaScanner.scan(pictureFile)
-        } catch (e: FileNotFoundException) {
-            LogHelper.log(activity, "File not found: " + e.message)
-        } catch (e: IOException) {
-            LogHelper.log(activity, "Error accessing file: " + e.message)
-        }
-    }
-
-    private fun rotate(bitmap: Bitmap, cameraRotation: Int): Bitmap {
-        return if (rotationFix) {
-            val matrix = Matrix()
-            matrix.setRotate(cameraRotation.toFloat())
-            Bitmap.createBitmap(bitmap, 0, 0, bitmap.width, bitmap.height, matrix, true)
-        } else {
-            bitmap
-        }
     }
 
     private fun showButtons(phase: Phase) = when (phase) {
@@ -427,12 +371,12 @@ open class DFNightSelfiesMainFragment : Fragment(), View.OnClickListener, Camera
             }
 
             R.id.save -> {
-                saveBitmapToFile()
+                bitmapManager.saveToFile(mediaScanner)
                 restartPreview()
             }
 
             R.id.share -> {
-                saveBitmapToFile()
+                bitmapManager.saveToFile(mediaScanner)
                 startShareIntent(getShareUri())
             }
 
@@ -504,72 +448,6 @@ open class DFNightSelfiesMainFragment : Fragment(), View.OnClickListener, Camera
         startPreview()
     }
 
-    private fun getOutputMediaFile(): File? {
-        try {
-            if (Environment.getExternalStorageState() != Environment.MEDIA_MOUNTED)
-                throw IOException()
-
-            val mediaStorageDir =
-                    if (saveToGallery)
-                        Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DCIM)
-                    else
-                        File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_PICTURES), getString(R.string.save_to_gallery_folder))
-
-            if (!mediaStorageDir.exists() && !mediaStorageDir.mkdirs())
-                throw IOException()
-
-            return File(mediaStorageDir.path + File.separator + "IMG_" + SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(Date()) + ".jpg")
-        } catch (e: IOException) {
-            return null
-        }
-    }
-
-    private inner class MyOrientationEventListener : OrientationEventListener(activity, SensorManager.SENSOR_DELAY_UI) {
-        internal var display = (activity.getSystemService(WINDOW_SERVICE) as WindowManager).defaultDisplay
-        internal var lastDisplayRotation: Int = 0
-
-        override fun onOrientationChanged(orientation: Int) {
-            val camera = camera ?: return
-
-            if (orientation == android.view.OrientationEventListener.ORIENTATION_UNKNOWN)
-                lastDisplayRotation = android.view.OrientationEventListener.ORIENTATION_UNKNOWN
-
-            val displayRotation = getDisplayRotation()
-            if (lastDisplayRotation == displayRotation)
-                return
-            else
-                lastDisplayRotation = displayRotation
-
-            synchronized(this) {
-                camera.setDisplayOrientation(getDisplayOrientation(displayRotation))
-                cameraRotation = getCameraRotation(displayRotation)
-                try {
-                    val cameraParameters = camera.parameters
-                    cameraParameters.setRotation(cameraRotation)
-                    camera.parameters = cameraParameters
-                } catch (e: Exception) {
-                    // nothing to do
-                }
-            }
-        }
-
-        private fun getCameraRotation(displayOrientation: Int): Int = (cameraOrientation - displayOrientation + 360) % 360
-
-        private fun getDisplayRotation() = when (display.rotation) {
-            Surface.ROTATION_0 -> 0
-
-            Surface.ROTATION_90 -> 270
-
-            Surface.ROTATION_180 -> 180
-
-            Surface.ROTATION_270 -> 90
-
-            else -> -1
-        }
-
-        private fun getDisplayOrientation(displayOrientation: Int) = (displayOrientation + 90) % 360
-    }
-
     private inner class CountDown internal constructor(private var value: Int) : Runnable {
         override fun run() {
             activity.runOnUiThread {
@@ -585,8 +463,4 @@ open class DFNightSelfiesMainFragment : Fragment(), View.OnClickListener, Camera
             }
         }
     }
-}
-
-enum class Phase {
-    BEFORE_TAKING, DURING_TIMER, WHILE_TAKING, AFTER_TAKING
 }

@@ -27,4 +27,6 @@ class PermissionManager(private val activity: Activity) {
     }
 
     private fun requestPermissions() = ActivityCompat.requestPermissions(activity, permissionToIdMap.keys.toTypedArray(), 0)
+
+    fun checkPermissionResult(grantResults: IntArray) = grantResults.isNotEmpty() && grantResults.all { it == PackageManager.PERMISSION_GRANTED }
 }
