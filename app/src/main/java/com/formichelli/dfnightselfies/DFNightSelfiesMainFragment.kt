@@ -2,7 +2,6 @@
 
 package com.formichelli.dfnightselfies
 
-import android.Manifest
 import android.app.AlertDialog
 import android.app.Fragment
 import android.content.Context
@@ -22,8 +21,6 @@ import android.os.Build
 import android.os.Bundle
 import android.os.Environment
 import android.preference.PreferenceManager
-import android.support.v4.app.ActivityCompat
-import android.support.v4.content.ContextCompat
 import android.support.v4.content.FileProvider
 import android.util.Log
 import android.view.*
@@ -31,6 +28,7 @@ import android.widget.FrameLayout
 import android.widget.LinearLayout
 import android.widget.Toast
 import com.formichelli.dfnightselfies.preference.DFNightSelfiesPreferences
+import com.formichelli.dfnightselfies.util.PermissionManager
 import com.formichelli.dfnightselfies.util.Ratio
 import com.formichelli.dfnightselfies.util.SingleMediaScanner
 import kotlinx.android.synthetic.main.buttons.*
@@ -51,11 +49,8 @@ open class DFNightSelfiesMainFragment : Fragment(), View.OnClickListener, Camera
     private val scaleFactor = 1.5
     private val maxScale = 1
     private val minScale = -2
-    private val permissionToIdMap = mutableMapOf(
-            Manifest.permission.CAMERA to 1,
-            Manifest.permission.WRITE_EXTERNAL_STORAGE to 2
-    )
 
+    private lateinit var permissionManager: PermissionManager
     private var cameraFacing: Int = 0
     private lateinit var beforePhotoButtons: Array<View>
     private lateinit var cameraSurface: CameraPreview
@@ -64,8 +59,6 @@ open class DFNightSelfiesMainFragment : Fragment(), View.OnClickListener, Camera
     private var selfTimerScheduler = Executors.newSingleThreadScheduledExecutor()
     internal var selfTimerFuture: ScheduledFuture<*>? = null
     protected var bitmap: Bitmap? = null
-
-    private var permissionGranted = false
 
     private var scale: Int = 0
     internal var color: Int = 0
@@ -107,13 +100,15 @@ open class DFNightSelfiesMainFragment : Fragment(), View.OnClickListener, Camera
         }
     }
 
-    open protected fun getPhotoActionButtons(): LinearLayout = photoActionButtons
+    protected open fun getPhotoActionButtons(): LinearLayout = photoActionButtons
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View? =
             inflater.inflate(R.layout.fragment_dfnightselfies_main, container, false)
 
     override fun onActivityCreated(savedInstanceState: Bundle?) {
         super.onActivityCreated(savedInstanceState)
+
+        permissionManager = PermissionManager(activity)
 
         val sharedPreferences = PreferenceManager.getDefaultSharedPreferences(activity) ?: return
 
@@ -145,7 +140,7 @@ open class DFNightSelfiesMainFragment : Fragment(), View.OnClickListener, Camera
             }.show()
         } else {
             cameraPreview.viewTreeObserver.addOnGlobalLayoutListener {
-                if (permissionGranted && camera == null) {
+                if (permissionManager.checkPermissions() && camera == null) {
                     initializeCamera()
                 }
             }
@@ -172,7 +167,7 @@ open class DFNightSelfiesMainFragment : Fragment(), View.OnClickListener, Camera
 
         if (phase == Phase.BEFORE_TAKING) {
             if (camera == null) {
-                if (checkPermissions()) {
+                if (permissionManager.checkPermissions()) {
                     initializeCamera()
                 }
             }
@@ -252,20 +247,6 @@ open class DFNightSelfiesMainFragment : Fragment(), View.OnClickListener, Camera
         camera?.release()
         camera = null
     }
-
-    private fun checkPermissions(): Boolean {
-        permissionToIdMap.keys.forEach {
-            if (ContextCompat.checkSelfPermission(activity, it) != PackageManager.PERMISSION_GRANTED) {
-                requestPermissions()
-                return false
-            }
-        }
-
-        permissionGranted = true
-        return true
-    }
-
-    private fun requestPermissions() = ActivityCompat.requestPermissions(activity, permissionToIdMap.keys.toTypedArray(), 0)
 
     override fun onRequestPermissionsResult(requestCode: Int,
                                             permissions: Array<String>, grantResults: IntArray) {
