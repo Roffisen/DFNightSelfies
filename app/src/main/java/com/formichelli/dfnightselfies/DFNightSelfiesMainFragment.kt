@@ -21,11 +21,10 @@ import android.os.Bundle
 import android.os.Environment
 import android.preference.PreferenceManager
 import android.support.v4.content.FileProvider
-import android.util.Log
 import android.view.*
 import android.widget.LinearLayout
-import android.widget.Toast
 import com.formichelli.dfnightselfies.preference.DFNightSelfiesPreferences
+import com.formichelli.dfnightselfies.util.LogHelper
 import com.formichelli.dfnightselfies.util.PermissionManager
 import com.formichelli.dfnightselfies.util.PreviewSizeManager
 import com.formichelli.dfnightselfies.util.SingleMediaScanner
@@ -42,7 +41,6 @@ import java.util.concurrent.ScheduledFuture
 import java.util.concurrent.TimeUnit
 
 open class DFNightSelfiesMainFragment : Fragment(), View.OnClickListener, Camera.PictureCallback {
-    private val logTag = "DFNightSelfies"
     private val shareText = "#dfnightselfies"
 
     private lateinit var permissionManager: PermissionManager
@@ -226,7 +224,7 @@ open class DFNightSelfiesMainFragment : Fragment(), View.OnClickListener, Camera
                 orientationEventListener.onOrientationChanged(OrientationEventListener.ORIENTATION_UNKNOWN)
                 true
             } catch (e: RuntimeException) {
-                log("Can't open camera " + i + ": " + e.localizedMessage)
+                LogHelper.log(activity, "Can't open camera " + i + ": " + e.localizedMessage)
                 false
             }
         }
@@ -261,11 +259,6 @@ open class DFNightSelfiesMainFragment : Fragment(), View.OnClickListener, Camera
             dialog.dismiss()
             activity.finish()
         }.create().show()
-    }
-
-    private fun log(message: String) {
-        Log.e(logTag, message)
-        Toast.makeText(activity, message, Toast.LENGTH_LONG).show()
     }
 
     private fun setBackgroundColor(color: Int) {
@@ -337,7 +330,7 @@ open class DFNightSelfiesMainFragment : Fragment(), View.OnClickListener, Camera
                 if (getPhotoActionButtons().visibility == View.GONE)
                     startPreview()
             } catch (e: Exception) {
-                log("Error setting camera preview: " + e.message)
+                LogHelper.log(activity, "Error setting camera preview: " + e.message)
             }
 
         }
@@ -377,7 +370,7 @@ open class DFNightSelfiesMainFragment : Fragment(), View.OnClickListener, Camera
     private fun saveBitmapToFile() {
         val pictureFile = getOutputMediaFile()
         if (pictureFile == null) {
-            log("Error creating media file, check storage permissions")
+            LogHelper.log(activity, "Error creating media file, check storage permissions")
             return
         }
 
@@ -387,9 +380,9 @@ open class DFNightSelfiesMainFragment : Fragment(), View.OnClickListener, Camera
             fos.close()
             mediaScanner.scan(pictureFile)
         } catch (e: FileNotFoundException) {
-            Log.d(logTag, "File not found: " + e.message)
+            LogHelper.log(activity, "File not found: " + e.message)
         } catch (e: IOException) {
-            Log.d(logTag, "Error accessing file: " + e.message)
+            LogHelper.log(activity, "Error accessing file: " + e.message)
         }
     }
 
