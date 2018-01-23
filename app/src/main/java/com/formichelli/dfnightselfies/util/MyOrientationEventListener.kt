@@ -2,23 +2,21 @@ package com.formichelli.dfnightselfies.util
 
 import android.app.Activity
 import android.content.Context
-import android.hardware.Camera
 import android.hardware.SensorManager
 import android.view.OrientationEventListener
 import android.view.Surface
 import android.view.WindowManager
+import com.formichelli.dfnightselfies.CameraManager
 
-internal class MyOrientationEventListener(activity: Activity) : OrientationEventListener(activity, SensorManager.SENSOR_DELAY_UI) {
+class MyOrientationEventListener(activity: Activity) : OrientationEventListener(activity, SensorManager.SENSOR_DELAY_UI) {
     private var display = (activity.getSystemService(Context.WINDOW_SERVICE) as WindowManager).defaultDisplay
     private var lastDisplayRotation: Int = 0
 
-    private lateinit var camera: Camera
+    private lateinit var cameraManager: CameraManager
     private var cameraOrientation: Int = 0
-    internal var cameraRotation: Int = 0
-        private set
 
-    fun setCamera(camera_: Camera, cameraOrientation_: Int) {
-        camera = camera_
+    fun setCameraManager(cameraManager_: CameraManager, cameraOrientation_: Int) {
+        cameraManager = cameraManager_
         cameraOrientation = cameraOrientation_
     }
 
@@ -33,12 +31,9 @@ internal class MyOrientationEventListener(activity: Activity) : OrientationEvent
             lastDisplayRotation = displayRotation
 
         synchronized(this) {
-            camera.setDisplayOrientation(getDisplayOrientation(displayRotation))
-            cameraRotation = getCameraRotation(displayRotation)
+            cameraManager.setDisplayOrientation(getDisplayOrientation(displayRotation))
             try {
-                val cameraParameters = camera.parameters
-                cameraParameters.setRotation(cameraRotation)
-                camera.parameters = cameraParameters
+                cameraManager.setRotation(getCameraRotation(displayRotation))
             } catch (e: Exception) {
                 // nothing to do
             }

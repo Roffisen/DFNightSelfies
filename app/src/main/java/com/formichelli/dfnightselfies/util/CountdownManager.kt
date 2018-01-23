@@ -3,21 +3,18 @@ package com.formichelli.dfnightselfies.util
 import android.app.Activity
 import android.view.View
 import android.widget.TextView
-import com.formichelli.dfnightselfies.DFNightSelfiesMainFragment
+import com.formichelli.dfnightselfies.CameraManager
 import com.formichelli.dfnightselfies.R
 import com.formichelli.dfnightselfies.StateMachine
 import java.util.concurrent.Executors
 import java.util.concurrent.ScheduledFuture
 import java.util.concurrent.TimeUnit
 
-class CountdownManager(private val mainFragment: DFNightSelfiesMainFragment, private val activity: Activity, private val countdown: TextView) {
+class CountdownManager(private val activity: Activity, private val cameraManager: CameraManager, private val countdown: TextView, private val countdownSeconds: Int) {
     private val selfTimerScheduler = Executors.newSingleThreadScheduledExecutor()
     private var selfTimerFuture: ScheduledFuture<*>? = null
 
-    private var countdownSeconds: Int = 0
-
-    fun setDuration(seconds: Int) {
-        countdownSeconds = seconds
+    init {
         resetText()
     }
 
@@ -43,7 +40,7 @@ class CountdownManager(private val mainFragment: DFNightSelfiesMainFragment, pri
         selfTimerFuture?.cancel(true)
     }
 
-    private inner class CountDown internal constructor(private var value: Int) : Runnable {
+    private inner class CountDown constructor(private var value: Int) : Runnable {
         override fun run() {
             activity.runOnUiThread {
                 try {
@@ -51,7 +48,7 @@ class CountdownManager(private val mainFragment: DFNightSelfiesMainFragment, pri
 
                     if (value < 0) {
                         selfTimerFuture?.cancel(true)
-                        mainFragment.takePicture(true)
+                        cameraManager.takePicture(true)
                     }
                 } finally {
                 }

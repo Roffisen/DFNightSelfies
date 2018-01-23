@@ -40,7 +40,7 @@ class DFNightSelfiesFromIntentFragment : DFNightSelfiesMainFragment() {
                 activity.finish()
             }
 
-            R.id.discard -> restartPreview()
+            R.id.discard -> cameraManager.restartPreview()
 
             else -> super.onClick(v)
         }

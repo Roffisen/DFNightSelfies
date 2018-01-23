@@ -4,19 +4,19 @@ package com.formichelli.dfnightselfies
 
 import android.app.AlertDialog
 import android.app.Fragment
-import android.content.Context
 import android.content.Intent
 import android.content.SharedPreferences
 import android.content.pm.ActivityInfo
 import android.content.pm.PackageManager
-import android.hardware.Camera
-import android.media.MediaActionSound
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.preference.PreferenceManager
 import android.support.v4.content.FileProvider
-import android.view.*
+import android.view.KeyEvent
+import android.view.LayoutInflater
+import android.view.View
+import android.view.ViewGroup
 import android.widget.LinearLayout
 import com.formichelli.dfnightselfies.preference.DFNightSelfiesPreferences
 import com.formichelli.dfnightselfies.util.*
@@ -24,22 +24,17 @@ import kotlinx.android.synthetic.main.buttons.*
 import kotlinx.android.synthetic.main.fragment_dfnightselfies_main.*
 import java.io.File
 
-open class DFNightSelfiesMainFragment : Fragment(), View.OnClickListener, Camera.PictureCallback {
+open class DFNightSelfiesMainFragment : Fragment(), View.OnClickListener {
     private val shareText = "#dfnightselfies"
 
+    protected lateinit var cameraManager: CameraManager
     private lateinit var countdownManager: CountdownManager
     private lateinit var stateMachine: StateMachine
     private lateinit var permissionManager: PermissionManager
     private lateinit var previewSizeManager: PreviewSizeManager
-    private lateinit var cameraSurface: CameraPreview
     private lateinit var orientationEventListener: MyOrientationEventListener
     private lateinit var mediaScanner: SingleMediaScanner
     protected lateinit var bitmapManager: BitmapManager
-
-    internal var color: Int = 0
-    private var shouldPlaySound: Boolean = false
-
-    private var camera: Camera? = null
 
     private var takeWithVolume: Boolean = false
 
@@ -47,32 +42,6 @@ open class DFNightSelfiesMainFragment : Fragment(), View.OnClickListener, Camera
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View? =
             inflater.inflate(R.layout.fragment_dfnightselfies_main, container, false)
-
-    override fun onActivityCreated(savedInstanceState: Bundle?) {
-        super.onActivityCreated(savedInstanceState)
-
-        countdownManager = CountdownManager(this, activity, countdown)
-        stateMachine = StateMachine(activity, getPhotoActionButtons(), arrayOf(settings, gallery, countdown), countdownManager)
-
-        val sharedPreferences = PreferenceManager.getDefaultSharedPreferences(activity) ?: return
-
-        permissionManager = PermissionManager(activity)
-
-        previewSizeManager = PreviewSizeManager(activity, sharedPreferences, cameraPreview, photoPreview)
-
-        bitmapManager = BitmapManager(activity, sharedPreferences)
-
-        orientationEventListener = MyOrientationEventListener(activity)
-
-        mediaScanner = SingleMediaScanner(activity)
-
-        setOnClickListeners()
-
-        // The first time show a welcome dialog, the other times initialize camera as soon as the camera preview frame is ready
-        showWelcomeDialogAndThen(sharedPreferences) { initializeCamera() }
-
-        setBackgroundColor(color)
-    }
 
     private fun showWelcomeDialogAndThen(sharedPreferences: SharedPreferences, then: () -> Boolean) {
         if (sharedPreferences.getInt("lastRunVersion", 0) < 7) {
@@ -89,7 +58,7 @@ open class DFNightSelfiesMainFragment : Fragment(), View.OnClickListener, Camera
             }.show()
         } else {
             cameraPreview.viewTreeObserver.addOnGlobalLayoutListener {
-                if (permissionManager.checkPermissions() && camera == null) {
+                if (permissionManager.checkPermissions()) {
                     then()
                 }
             }
@@ -112,32 +81,40 @@ open class DFNightSelfiesMainFragment : Fragment(), View.OnClickListener, Camera
     override fun onStart() {
         super.onStart()
 
+        val sharedPreferences = PreferenceManager.getDefaultSharedPreferences(activity) ?: return
+
+        previewSizeManager = PreviewSizeManager(activity, sharedPreferences, cameraPreview, photoPreview)
+        orientationEventListener = MyOrientationEventListener(activity)
+        bitmapManager = BitmapManager(activity, sharedPreferences)
+        stateMachine = StateMachine(activity, getPhotoActionButtons(), arrayOf(settings, gallery, countdown), countdownManager)
+        permissionManager = PermissionManager(activity)
+        cameraManager = CameraManager(activity, stateMachine, cameraPreview, orientationEventListener, previewSizeManager, bitmapManager, photoPreview, getPhotoActionButtons(), shutterFrame, sharedPreferences.getBoolean(getString(R.string.shutter_sound_preference), false))
+        countdownManager = CountdownManager(activity, cameraManager, countdown, Integer.valueOf(sharedPreferences.getString(getString(R.string.countdown_preference), "3"))
+                ?: 3)
+
+        mediaScanner = SingleMediaScanner(activity)
+
+        setOnClickListeners()
+
+        // The first time show a welcome dialog, the other times initialize camera as soon as the camera preview frame is ready
+        showWelcomeDialogAndThen(sharedPreferences) { cameraManager.initializeCamera() }
         if (stateMachine.currentState == StateMachine.State.BEFORE_TAKING) {
-            if (camera == null) {
-                if (permissionManager.checkPermissions()) {
-                    initializeCamera()
-                }
+            if (permissionManager.checkPermissions()) {
+                cameraManager.initializeCamera()
             }
         }
 
         orientationEventListener.enable()
 
-        val sharedPreferences = PreferenceManager.getDefaultSharedPreferences(activity) ?: return
+        setBackgroundColor(sharedPreferences.getInt(getString(R.string.color_picker_preference), -1))
 
-        color = sharedPreferences.getInt(getString(R.string.color_picker_preference), -1)
-        setBackgroundColor(color)
-
-        countdownManager.setDuration(Integer.valueOf(sharedPreferences.getString(getString(R.string.countdown_preference), "3"))
-                ?: 3)
-
-        shouldPlaySound = sharedPreferences.getBoolean(getString(R.string.shutter_sound_preference), false)
         takeWithVolume = sharedPreferences.getBoolean(getString(R.string.take_with_volume_preference), false)
     }
 
     override fun onStop() {
         super.onStop()
 
-        releaseCamera()
+        cameraManager.releaseCamera()
 
         orientationEventListener.disable()
     }
@@ -145,58 +122,15 @@ open class DFNightSelfiesMainFragment : Fragment(), View.OnClickListener, Camera
     override fun onDestroy() {
         super.onDestroy()
 
-        releaseCamera()
+        cameraManager.releaseCamera()
 
         countdownManager.cancel()
-    }
-
-    private fun initializeCamera(): Boolean {
-        if (!activity.packageManager.hasSystemFeature(PackageManager.FEATURE_CAMERA))
-            return false
-
-        releaseCamera()
-
-        val mCameraInfo = Camera.CameraInfo()
-        for (i in 0 until Camera.getNumberOfCameras()) {
-            Camera.getCameraInfo(i, mCameraInfo)
-            if (mCameraInfo.facing != Camera.CameraInfo.CAMERA_FACING_FRONT) {
-                continue
-            }
-
-            return try {
-                camera = Camera.open(i)
-                val mCamera = camera ?: return false
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN_MR1) {
-                    mCamera.enableShutterSound(false)
-                }
-
-                previewSizeManager.initializePreviewSize(mCamera)
-
-                cameraSurface = CameraPreview(activity, mCamera)
-                cameraPreview.removeAllViews()
-                cameraPreview.addView(cameraSurface)
-                orientationEventListener.setCamera(mCamera, mCameraInfo.orientation)
-                orientationEventListener.onOrientationChanged(OrientationEventListener.ORIENTATION_UNKNOWN)
-                true
-            } catch (e: RuntimeException) {
-                LogHelper.log(activity, "Can't open camera " + i + ": " + e.localizedMessage)
-                false
-            }
-        }
-
-        return false
-    }
-
-    private fun releaseCamera() {
-        camera?.stopPreview()
-        camera?.release()
-        camera = null
     }
 
     override fun onRequestPermissionsResult(requestCode: Int,
                                             permissions: Array<String>, grantResults: IntArray) {
         if (permissionManager.checkPermissionResult(grantResults)) {
-            initializeCamera()
+            cameraManager.initializeCamera()
         } else {
             exitWithError(R.string.cant_get_front_camera)
         }
@@ -223,7 +157,7 @@ open class DFNightSelfiesMainFragment : Fragment(), View.OnClickListener, Camera
         when (keyCode) {
             KeyEvent.KEYCODE_BACK -> {
                 if (stateMachine.currentState == StateMachine.State.AFTER_TAKING)
-                    restartPreview()
+                    cameraManager.restartPreview()
                 else
                     activity.finish()
 
@@ -232,7 +166,7 @@ open class DFNightSelfiesMainFragment : Fragment(), View.OnClickListener, Camera
 
             KeyEvent.KEYCODE_VOLUME_DOWN, KeyEvent.KEYCODE_VOLUME_UP -> {
                 if (takeWithVolume)
-                    takePicture()
+                    cameraManager.takePicture()
                 else if (getPhotoActionButtons().visibility != View.VISIBLE)
                     previewSizeManager.resizePreview(if (keyCode == KeyEvent.KEYCODE_VOLUME_DOWN) -1 else 1)
 
@@ -245,82 +179,15 @@ open class DFNightSelfiesMainFragment : Fragment(), View.OnClickListener, Camera
 
     fun onKeyDown(keyCode: Int) = keyCode == KeyEvent.KEYCODE_VOLUME_DOWN || keyCode == KeyEvent.KEYCODE_VOLUME_UP
 
-    private fun startPreview() {
-        val mCamera = camera ?: return
-
-        photoPreview.visibility = View.GONE
-        photoPreview.setImageResource(android.R.color.transparent)
-        bitmapManager.bitmap = null
-        cameraSurface.visibility = View.VISIBLE
-        mCamera.startPreview()
-    }
-
-    inner class CameraPreview(context: Context, private val mCamera: Camera?) : SurfaceView(context), SurfaceHolder.Callback {
-        private val mHolder: SurfaceHolder = holder
-
-        init {
-            // Install a SurfaceHolder.Callback so we get notified when the
-            // underlying surface is created and destroyed.
-            mHolder.addCallback(this)
-            // deprecated setting, but required on Android versions prior to 3.0
-            mHolder.setType(SurfaceHolder.SURFACE_TYPE_PUSH_BUFFERS)
-        }
-
-        override fun surfaceCreated(holder: SurfaceHolder) {
-            val mCamera = mCamera ?: return
-
-            // The Surface has been created, now tell the camera where to draw the preview.
-            try {
-                mCamera.setPreviewDisplay(holder)
-                if (getPhotoActionButtons().visibility == View.GONE)
-                    startPreview()
-            } catch (e: Exception) {
-                LogHelper.log(activity, "Error setting camera preview: " + e.message)
-            }
-
-        }
-
-        override fun surfaceDestroyed(holder: SurfaceHolder) {
-            // camera release is managed by activity
-        }
-
-        override fun surfaceChanged(holder: SurfaceHolder, format: Int, w: Int, h: Int) {
-            // Surface can't change
-        }
-    }
-
-    private val shutterCallback = Camera.ShutterCallback {
-        if (shouldPlaySound)
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN)
-                MediaActionSound().play(MediaActionSound.SHUTTER_CLICK)
-
-        shutterFrame.visibility = View.VISIBLE
-    }
-
-    override fun onPictureTaken(data: ByteArray, camera: Camera) {
-        val mCamera = this.camera ?: return
-
-        mCamera.stopPreview()
-        shutterFrame.visibility = View.GONE
-
-        bitmapManager.fromByteArray(data, orientationEventListener.cameraRotation)
-
-        photoPreview.setImageBitmap(bitmapManager.bitmap)
-        photoPreview.visibility = View.VISIBLE
-        cameraSurface.visibility = View.GONE
-
-        stateMachine.currentState = StateMachine.State.AFTER_TAKING
-    }
-
     override fun onClick(v: View) {
         when (v.id) {
             view.id -> {
-                takePicture()
+                cameraManager.takePicture()
             }
 
             R.id.save -> {
                 bitmapManager.saveToFile(mediaScanner)
-                restartPreview()
+                cameraManager.restartPreview()
             }
 
             R.id.share -> {
@@ -329,7 +196,7 @@ open class DFNightSelfiesMainFragment : Fragment(), View.OnClickListener, Camera
             }
 
             R.id.delete -> {
-                restartPreview()
+                cameraManager.restartPreview()
             }
 
             R.id.settings -> openSettings()
@@ -359,24 +226,5 @@ open class DFNightSelfiesMainFragment : Fragment(), View.OnClickListener, Camera
         shareIntent.putExtra(Intent.EXTRA_TEXT, shareText)
         startActivityForResult(Intent.createChooser(shareIntent, resources.getText(R.string.share)), 0)
         activity.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_SENSOR
-    }
-
-    internal fun takePicture(force: Boolean = false) {
-        if (!force && stateMachine.currentState != StateMachine.State.BEFORE_TAKING)
-            return
-
-        val camera = camera ?: return
-        stateMachine.currentState = StateMachine.State.WHILE_TAKING
-
-        try {
-            camera.takePicture(shutterCallback, null, this)
-        } catch (e: Exception) {
-            restartPreview()
-        }
-    }
-
-    protected fun restartPreview() {
-        stateMachine.currentState = StateMachine.State.BEFORE_TAKING
-        startPreview()
     }
 }

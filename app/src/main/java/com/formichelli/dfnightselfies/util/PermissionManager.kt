@@ -14,7 +14,7 @@ class PermissionManager(private val activity: Activity) {
 
     private var permissionsGranted = false
 
-    internal fun checkPermissions(): Boolean {
+    fun checkPermissions(): Boolean {
         permissionToIdMap.keys.forEach {
             if (ContextCompat.checkSelfPermission(activity, it) != PackageManager.PERMISSION_GRANTED) {
                 requestPermissions()

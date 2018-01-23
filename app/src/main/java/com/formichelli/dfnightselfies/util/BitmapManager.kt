@@ -21,7 +21,7 @@ class BitmapManager(private val activity: Activity, sharedPreferences: SharedPre
     private var saveToGallery: Boolean = sharedPreferences.getBoolean(activity.getString(R.string.save_to_gallery_preference), false)
 
 
-    internal fun fromByteArray(data: ByteArray, cameraRotation: Int) {
+    fun fromByteArray(data: ByteArray, cameraRotation: Int) {
         bitmap = rotate(BitmapFactory.decodeByteArray(data, 0, data.size), cameraRotation)
     }
 
@@ -35,7 +35,7 @@ class BitmapManager(private val activity: Activity, sharedPreferences: SharedPre
         }
     }
 
-    internal fun saveToFile(mediaScanner: SingleMediaScanner) {
+    fun saveToFile(mediaScanner: SingleMediaScanner) {
         val bitmap = bitmap ?: return
 
         val pictureFile = getOutputMediaFile()
