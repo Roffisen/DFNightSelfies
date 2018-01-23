@@ -14,19 +14,18 @@ import java.io.IOException
 import java.text.SimpleDateFormat
 import java.util.*
 
-class BitmapManager(private val activity: Activity, sharedPreferences: SharedPreferences) {
+class BitmapManager(private val activity: Activity, private val sharedPreferences: SharedPreferences) {
     var bitmap: Bitmap? = null
 
-    private val rotationFix: Boolean = sharedPreferences.getBoolean(activity.getString(R.string.rotation_fix_preference), false)
-    private var saveToGallery: Boolean = sharedPreferences.getBoolean(activity.getString(R.string.save_to_gallery_preference), false)
-
+    private fun rotationFix() = sharedPreferences.getBoolean(activity.getString(R.string.rotation_fix_preference), false)
+    private fun saveToGallery() = sharedPreferences.getBoolean(activity.getString(R.string.save_to_gallery_preference), false)
 
     fun fromByteArray(data: ByteArray, cameraRotation: Int) {
         bitmap = rotate(BitmapFactory.decodeByteArray(data, 0, data.size), cameraRotation)
     }
 
     private fun rotate(bitmap: Bitmap, cameraRotation: Int): Bitmap {
-        return if (rotationFix) {
+        return if (rotationFix()) {
             val matrix = Matrix()
             matrix.setRotate(cameraRotation.toFloat())
             Bitmap.createBitmap(bitmap, 0, 0, bitmap.width, bitmap.height, matrix, true)
@@ -62,7 +61,7 @@ class BitmapManager(private val activity: Activity, sharedPreferences: SharedPre
                 throw IOException()
 
             val mediaStorageDir =
-                    if (saveToGallery)
+                    if (saveToGallery())
                         Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DCIM)
                     else
                         File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_PICTURES), activity.getString(R.string.save_to_gallery_folder))

@@ -3,6 +3,7 @@
 package com.formichelli.dfnightselfies
 
 import android.app.Activity
+import android.content.SharedPreferences
 import android.content.pm.PackageManager
 import android.hardware.Camera
 import android.media.MediaActionSound
@@ -24,18 +25,18 @@ class CameraManager(private val activity: Activity,
                     private val photoPreview: ImageView,
                     private val photoActionButtons: LinearLayout,
                     private val shutterFrame: FrameLayout,
-                    private val shouldPlaySound: Boolean) : Camera.PictureCallback {
+                    private val sharedPreferences: SharedPreferences) : Camera.PictureCallback {
     private var camera: Camera? = null
     private var cameraSurface: CameraPreview? = null
     private var cameraRotation = 0
+    private fun shouldPlaySound() = sharedPreferences.getBoolean(activity.getString(R.string.shutter_sound_preference), false)
 
-    fun initializeCamera(): Boolean {
-        camera ?: return false
+    fun initializeCamera() {
+        if (camera != null)
+            return
 
         if (!activity.packageManager.hasSystemFeature(PackageManager.FEATURE_CAMERA))
-            return false
-
-        releaseCamera()
+            return
 
         val cameraInfo = Camera.CameraInfo()
         for (i in 0 until Camera.getNumberOfCameras()) {
@@ -44,9 +45,9 @@ class CameraManager(private val activity: Activity,
                 continue
             }
 
-            return try {
+            try {
                 camera = Camera.open(i)
-                val camera = camera ?: return false
+                val camera = camera ?: return
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN_MR1) {
                     camera.enableShutterSound(false)
                 }
@@ -58,14 +59,10 @@ class CameraManager(private val activity: Activity,
                 cameraPreview.addView(cameraSurface)
                 orientationEventListener.setCameraManager(this, cameraInfo.orientation)
                 orientationEventListener.onOrientationChanged(OrientationEventListener.ORIENTATION_UNKNOWN)
-                true
             } catch (e: RuntimeException) {
                 LogHelper.log(activity, "Can't open camera " + i + ": " + e.localizedMessage)
-                false
             }
         }
-
-        return false
     }
 
     fun releaseCamera() {
@@ -105,9 +102,9 @@ class CameraManager(private val activity: Activity,
     }
 
     private val shutterCallback = Camera.ShutterCallback {
-        if (shouldPlaySound)
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN)
-                MediaActionSound().play(MediaActionSound.SHUTTER_CLICK)
+        if (shouldPlaySound() && Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN) {
+            MediaActionSound().play(MediaActionSound.SHUTTER_CLICK)
+        }
 
         shutterFrame.visibility = View.VISIBLE
     }

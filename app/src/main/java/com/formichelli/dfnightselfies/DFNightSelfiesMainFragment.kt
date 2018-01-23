@@ -43,7 +43,26 @@ open class DFNightSelfiesMainFragment : Fragment(), View.OnClickListener {
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View? =
             inflater.inflate(R.layout.fragment_dfnightselfies_main, container, false)
 
-    private fun showWelcomeDialogAndThen(sharedPreferences: SharedPreferences, then: () -> Boolean) {
+    override fun onActivityCreated(savedInstanceState: Bundle?) {
+        super.onActivityCreated(savedInstanceState)
+
+        val sharedPreferences = PreferenceManager.getDefaultSharedPreferences(activity) ?: return
+
+        previewSizeManager = PreviewSizeManager(activity, sharedPreferences, cameraPreview, photoPreview)
+        orientationEventListener = MyOrientationEventListener(activity)
+        bitmapManager = BitmapManager(activity, sharedPreferences)
+        countdownManager = CountdownManager(activity, countdown, sharedPreferences)
+        stateMachine = StateMachine(activity, getPhotoActionButtons(), arrayOf(settings, gallery, countdown), countdownManager)
+        permissionManager = PermissionManager(activity)
+        cameraManager = CameraManager(activity, stateMachine, cameraPreview, orientationEventListener, previewSizeManager, bitmapManager, photoPreview, getPhotoActionButtons(), shutterFrame, sharedPreferences)
+        countdownManager.cameraManager = cameraManager
+
+        mediaScanner = SingleMediaScanner(activity)
+
+        setOnClickListeners()
+    }
+
+    private fun showWelcomeDialogAndThen(sharedPreferences: SharedPreferences, then: () -> Unit) {
         if (sharedPreferences.getInt("lastRunVersion", 0) < 7) {
             AlertDialog.Builder(activity).setTitle(R.string.welcome).setMessage(R.string.welcome_text).setNeutralButton("OK") { _, _ ->
                 val currentVersion = try {
@@ -58,9 +77,7 @@ open class DFNightSelfiesMainFragment : Fragment(), View.OnClickListener {
             }.show()
         } else {
             cameraPreview.viewTreeObserver.addOnGlobalLayoutListener {
-                if (permissionManager.checkPermissions()) {
-                    then()
-                }
+                then()
             }
         }
     }
@@ -83,32 +100,20 @@ open class DFNightSelfiesMainFragment : Fragment(), View.OnClickListener {
 
         val sharedPreferences = PreferenceManager.getDefaultSharedPreferences(activity) ?: return
 
-        previewSizeManager = PreviewSizeManager(activity, sharedPreferences, cameraPreview, photoPreview)
-        orientationEventListener = MyOrientationEventListener(activity)
-        bitmapManager = BitmapManager(activity, sharedPreferences)
-        stateMachine = StateMachine(activity, getPhotoActionButtons(), arrayOf(settings, gallery, countdown), countdownManager)
-        permissionManager = PermissionManager(activity)
-        cameraManager = CameraManager(activity, stateMachine, cameraPreview, orientationEventListener, previewSizeManager, bitmapManager, photoPreview, getPhotoActionButtons(), shutterFrame, sharedPreferences.getBoolean(getString(R.string.shutter_sound_preference), false))
-        countdownManager = CountdownManager(activity, cameraManager, countdown, Integer.valueOf(sharedPreferences.getString(getString(R.string.countdown_preference), "3"))
-                ?: 3)
-
-        mediaScanner = SingleMediaScanner(activity)
-
-        setOnClickListeners()
-
-        // The first time show a welcome dialog, the other times initialize camera as soon as the camera preview frame is ready
-        showWelcomeDialogAndThen(sharedPreferences) { cameraManager.initializeCamera() }
-        if (stateMachine.currentState == StateMachine.State.BEFORE_TAKING) {
-            if (permissionManager.checkPermissions()) {
-                cameraManager.initializeCamera()
-            }
-        }
-
+        takeWithVolume = sharedPreferences.getBoolean(getString(R.string.take_with_volume_preference), false)
+        setBackgroundColor(sharedPreferences.getInt(getString(R.string.color_picker_preference), -1))
+        countdownManager.resetText()
         orientationEventListener.enable()
 
-        setBackgroundColor(sharedPreferences.getInt(getString(R.string.color_picker_preference), -1))
-
-        takeWithVolume = sharedPreferences.getBoolean(getString(R.string.take_with_volume_preference), false)
+        // The first time show a welcome dialog, the other times initialize camera as soon as the camera preview frame is ready
+        showWelcomeDialogAndThen(sharedPreferences) {
+            if (permissionManager.checkPermissions()) {
+                cameraManager.initializeCamera()
+                if (stateMachine.currentState == StateMachine.State.BEFORE_TAKING) {
+                    cameraManager.startPreview()
+                }
+            }
+        }
     }
 
     override fun onStop() {
@@ -209,21 +214,12 @@ open class DFNightSelfiesMainFragment : Fragment(), View.OnClickListener {
 
     private fun getShareUri() = FileProvider.getUriForFile(activity, BuildConfig.APPLICATION_ID + ".provider", File(mediaScanner.file?.absolutePath))
 
-    private fun showGallery() {
-        val mIntent = Intent()
-        mIntent.action = Intent.ACTION_VIEW
-        mIntent.type = "image/*"
-        startActivity(mIntent)
-    }
+    private fun showGallery() = startActivity(Intent().setAction(Intent.ACTION_VIEW).setType("image/*"))
 
     private fun openSettings() = startActivity(Intent(activity, DFNightSelfiesPreferences::class.java))
 
     private fun startShareIntent(pictureUri: Uri) {
-        val shareIntent = Intent()
-        shareIntent.action = Intent.ACTION_SEND
-        shareIntent.type = "image/*"
-        shareIntent.putExtra(Intent.EXTRA_STREAM, pictureUri)
-        shareIntent.putExtra(Intent.EXTRA_TEXT, shareText)
+        val shareIntent = Intent().setAction(Intent.ACTION_SEND).setType("image/*").putExtra(Intent.EXTRA_STREAM, pictureUri).putExtra(Intent.EXTRA_TEXT, shareText)
         startActivityForResult(Intent.createChooser(shareIntent, resources.getText(R.string.share)), 0)
         activity.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_SENSOR
     }
