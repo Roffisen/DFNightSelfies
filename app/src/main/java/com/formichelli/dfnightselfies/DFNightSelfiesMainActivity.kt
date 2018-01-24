@@ -25,4 +25,6 @@ open class DFNightSelfiesMainActivity : Activity() {
     override fun onKeyDown(keyCode: Int, event: KeyEvent) = fragment.onKeyDown(keyCode)
 
     override fun onKeyUp(keyCode: Int, event: KeyEvent) = fragment.onKeyUp(keyCode)
+
+    override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<String>, grantResults: IntArray) = fragment.onRequestPermissionsResult(requestCode, permissions, grantResults)
 }

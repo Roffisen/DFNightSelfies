@@ -31,7 +31,7 @@ class CameraManager(private val activity: Activity,
     private var cameraRotation = 0
     private fun shouldPlaySound() = sharedPreferences.getBoolean(activity.getString(R.string.shutter_sound_preference), false)
 
-    fun initializeCamera() {
+    private fun initializeCamera() {
         if (camera != null)
             return
 
@@ -72,6 +72,11 @@ class CameraManager(private val activity: Activity,
     }
 
     fun startPreview() {
+        if (stateMachine.currentState != StateMachine.State.BEFORE_TAKING) {
+            return
+        }
+
+        initializeCamera()
         val camera = camera ?: return
         val cameraSurface = cameraSurface ?: return
 

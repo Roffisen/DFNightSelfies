@@ -9,7 +9,6 @@ import android.content.SharedPreferences
 import android.content.pm.ActivityInfo
 import android.content.pm.PackageManager
 import android.net.Uri
-import android.os.Build
 import android.os.Bundle
 import android.preference.PreferenceManager
 import android.support.v4.content.FileProvider
@@ -25,8 +24,6 @@ import kotlinx.android.synthetic.main.fragment_dfnightselfies_main.*
 import java.io.File
 
 open class DFNightSelfiesMainFragment : Fragment(), View.OnClickListener {
-    private val shareText = "#dfnightselfies"
-
     protected lateinit var cameraManager: CameraManager
     private lateinit var countdownManager: CountdownManager
     private lateinit var stateMachine: StateMachine
@@ -101,17 +98,14 @@ open class DFNightSelfiesMainFragment : Fragment(), View.OnClickListener {
         val sharedPreferences = PreferenceManager.getDefaultSharedPreferences(activity) ?: return
 
         takeWithVolume = sharedPreferences.getBoolean(getString(R.string.take_with_volume_preference), false)
-        setBackgroundColor(sharedPreferences.getInt(getString(R.string.color_picker_preference), -1))
+        WindowUtil.setBackgroundColor(activity, listOf(shutterFrame, view), sharedPreferences.getInt(getString(R.string.color_picker_preference), -1))
         countdownManager.resetText()
         orientationEventListener.enable()
 
         // The first time show a welcome dialog, the other times initialize camera as soon as the camera preview frame is ready
         showWelcomeDialogAndThen(sharedPreferences) {
             if (permissionManager.checkPermissions()) {
-                cameraManager.initializeCamera()
-                if (stateMachine.currentState == StateMachine.State.BEFORE_TAKING) {
-                    cameraManager.startPreview()
-                }
+                cameraManager.startPreview()
             }
         }
     }
@@ -132,54 +126,39 @@ open class DFNightSelfiesMainFragment : Fragment(), View.OnClickListener {
         countdownManager.cancel()
     }
 
-    override fun onRequestPermissionsResult(requestCode: Int,
-                                            permissions: Array<String>, grantResults: IntArray) {
-        if (permissionManager.checkPermissionResult(grantResults)) {
-            cameraManager.initializeCamera()
-        } else {
-            exitWithError(R.string.cant_get_front_camera)
+    override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<String>, grantResults: IntArray) = when {
+        permissions.isEmpty() -> {// nothing to do
         }
+        permissionManager.checkPermissionResult(grantResults) -> cameraManager.startPreview()
+        else -> exitWithError(R.string.cant_get_front_camera)
     }
 
-    private fun exitWithError(errorMessageId: Int) {
-        AlertDialog.Builder(activity).setTitle("Error").setMessage(getString(errorMessageId) + ".\n" + getString(R.string.application_will_terminate) + ".").setPositiveButton("OK") { dialog, _ ->
-            dialog.dismiss()
-            activity.finish()
-        }.create().show()
-    }
+    private fun exitWithError(errorMessageId: Int) =
+            AlertDialog.Builder(activity).setTitle(getString(R.string.error_title)).setMessage(getString(errorMessageId) + ".\n" + getString(R.string.application_will_terminate) + ".").setPositiveButton("OK") { dialog, _ ->
+                dialog.dismiss()
+                activity.finish()
+            }.create().show()
 
-    private fun setBackgroundColor(color: Int) {
-        shutterFrame.setBackgroundColor(color)
-        view.setBackgroundColor(color)
+    fun onKeyUp(keyCode: Int) = when (keyCode) {
+        KeyEvent.KEYCODE_BACK -> {
+            if (stateMachine.currentState == StateMachine.State.AFTER_TAKING)
+                cameraManager.restartPreview()
+            else
+                activity.finish()
 
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-            activity.window.statusBarColor = color
-            activity.window.navigationBarColor = color
-        }
-    }
-
-    fun onKeyUp(keyCode: Int): Boolean {
-        when (keyCode) {
-            KeyEvent.KEYCODE_BACK -> {
-                if (stateMachine.currentState == StateMachine.State.AFTER_TAKING)
-                    cameraManager.restartPreview()
-                else
-                    activity.finish()
-
-                return true
-            }
-
-            KeyEvent.KEYCODE_VOLUME_DOWN, KeyEvent.KEYCODE_VOLUME_UP -> {
-                if (takeWithVolume)
-                    cameraManager.takePicture()
-                else if (getPhotoActionButtons().visibility != View.VISIBLE)
-                    previewSizeManager.resizePreview(if (keyCode == KeyEvent.KEYCODE_VOLUME_DOWN) -1 else 1)
-
-                return true
-            }
+            true
         }
 
-        return false
+        KeyEvent.KEYCODE_VOLUME_DOWN, KeyEvent.KEYCODE_VOLUME_UP -> {
+            if (takeWithVolume)
+                cameraManager.takePicture()
+            else if (getPhotoActionButtons().visibility != View.VISIBLE)
+                previewSizeManager.resizePreview(if (keyCode == KeyEvent.KEYCODE_VOLUME_DOWN) -1 else 1)
+
+            true
+        }
+
+        else -> false
     }
 
     fun onKeyDown(keyCode: Int) = keyCode == KeyEvent.KEYCODE_VOLUME_DOWN || keyCode == KeyEvent.KEYCODE_VOLUME_UP
@@ -219,7 +198,7 @@ open class DFNightSelfiesMainFragment : Fragment(), View.OnClickListener {
     private fun openSettings() = startActivity(Intent(activity, DFNightSelfiesPreferences::class.java))
 
     private fun startShareIntent(pictureUri: Uri) {
-        val shareIntent = Intent().setAction(Intent.ACTION_SEND).setType("image/*").putExtra(Intent.EXTRA_STREAM, pictureUri).putExtra(Intent.EXTRA_TEXT, shareText)
+        val shareIntent = Intent().setAction(Intent.ACTION_SEND).setType("image/*").putExtra(Intent.EXTRA_STREAM, pictureUri).putExtra(Intent.EXTRA_TEXT, "#dfnightselfies")
         startActivityForResult(Intent.createChooser(shareIntent, resources.getText(R.string.share)), 0)
         activity.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_SENSOR
     }

@@ -1,8 +1,11 @@
 package com.formichelli.dfnightselfies
 
 import android.app.Activity
+import android.os.Build
+import android.view.View
 import android.view.Window
 import android.view.WindowManager
+import kotlinx.android.synthetic.main.fragment_dfnightselfies_main.*
 
 object WindowUtil {
     fun setupWindow(activity: Activity) {
@@ -21,4 +24,16 @@ object WindowUtil {
         windowAttributes.screenBrightness = 1f
         activity.window.attributes = windowAttributes
     }
+
+    fun setBackgroundColor(activity: Activity, views: List<View> , color: Int) {
+        views.forEach {
+            it.setBackgroundColor(color)
+        }
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+            activity.window.statusBarColor = color
+            activity.window.navigationBarColor = color
+        }
+    }
+
 }

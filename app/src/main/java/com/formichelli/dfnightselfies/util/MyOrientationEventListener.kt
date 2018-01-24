@@ -12,7 +12,7 @@ class MyOrientationEventListener(activity: Activity) : OrientationEventListener(
     private var display = (activity.getSystemService(Context.WINDOW_SERVICE) as WindowManager).defaultDisplay
     private var lastDisplayRotation: Int = 0
 
-    private lateinit var cameraManager: CameraManager
+    private var cameraManager: CameraManager? = null
     private var cameraOrientation: Int = 0
 
     fun setCameraManager(cameraManager_: CameraManager, cameraOrientation_: Int) {
@@ -31,9 +31,9 @@ class MyOrientationEventListener(activity: Activity) : OrientationEventListener(
             lastDisplayRotation = displayRotation
 
         synchronized(this) {
-            cameraManager.setDisplayOrientation(getDisplayOrientation(displayRotation))
+            cameraManager?.setDisplayOrientation(getDisplayOrientation(displayRotation))
             try {
-                cameraManager.setRotation(getCameraRotation(displayRotation))
+                cameraManager?.setRotation(getCameraRotation(displayRotation))
             } catch (e: Exception) {
                 // nothing to do
             }
