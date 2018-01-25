@@ -1,14 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
 
-    <string name="application_will_terminate">Application will be closed now</string>
+    <string name="application_will_terminate">The application will be closed</string>
     <string name="app_name" translatable="false">DF Night Selfies</string>
     <string name="cant_get_front_camera">Cannot obtain front camera</string>
     <string name="discard">Discard</string>
     <string name="save">Save</string>
     <string name="share">Share</string>
     <string name="welcome">Welcome!</string>
-    <string name="welcome_text">Welcome to DF Night Selfies!\nTap anywhere to take a selfie.\nShare your photos with the hashtag #dfnightselfies\nUse the settings to change background color or timer duration.\nUse volume buttons to regulate preview size.\nIf the photo is incorrectly rotated on your device, please enable the \"Rotation Fix\" setting.\n</string>
+    <string name="welcome_text">"Welcome to DF Night Selfies! Tap anywhere to take a selfie. Share your photos with the hashtag #dfnightselfies Use the settings to change background color or timer duration. Use volume buttons to regulate preview size. If the photo is incorrectly rotated on your device, please enable the \"Rotation Fix\" setting. "</string>
     <string name="delete">Delete</string>
     <string name="accept">Accept</string>
     <string name="countdown_string_format" translatable="false">%ds</string>
@@ -41,4 +41,5 @@
     <string name="gallery">Gallery</string>
     <string name="preview">Preview</string>
     <string name="error_title">Error</string>
+    <string name="permissions_needed">The application requires the Camera and Storage permissions to run</string>
 </resources>

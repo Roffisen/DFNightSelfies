@@ -12,7 +12,7 @@ import android.preference.SwitchPreference
 import android.view.View
 import android.view.ViewGroup
 import com.formichelli.dfnightselfies.R
-import com.formichelli.dfnightselfies.WindowUtil
+import com.formichelli.dfnightselfies.util.Util
 import com.google.android.gms.ads.AdRequest
 import com.google.android.gms.ads.AdSize
 import com.google.android.gms.ads.AdView
@@ -20,7 +20,7 @@ import com.kizitonwose.colorpreference.ColorPreference
 
 class DFNightSelfiesPreferences : PreferenceActivity(), SharedPreferences.OnSharedPreferenceChangeListener {
     public override fun onCreate(savedInstanceState: Bundle?) {
-        WindowUtil.setupWindow(this)
+        Util.setupWindow(this)
 
         super.onCreate(savedInstanceState)
 

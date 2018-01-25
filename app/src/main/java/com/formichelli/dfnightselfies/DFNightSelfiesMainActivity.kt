@@ -3,6 +3,7 @@ package com.formichelli.dfnightselfies
 import android.app.Activity
 import android.os.Bundle
 import android.view.KeyEvent
+import com.formichelli.dfnightselfies.util.Util
 
 import com.google.android.gms.ads.MobileAds
 
@@ -12,7 +13,7 @@ open class DFNightSelfiesMainActivity : Activity() {
     public override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        WindowUtil.setupWindow(this)
+        Util.setupWindow(this)
 
         MobileAds.initialize(applicationContext, getString(R.string.banner_ad_unit_id))
 

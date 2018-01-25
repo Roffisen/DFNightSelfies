@@ -98,7 +98,7 @@ open class DFNightSelfiesMainFragment : Fragment(), View.OnClickListener {
         val sharedPreferences = PreferenceManager.getDefaultSharedPreferences(activity) ?: return
 
         takeWithVolume = sharedPreferences.getBoolean(getString(R.string.take_with_volume_preference), false)
-        WindowUtil.setBackgroundColor(activity, listOf(shutterFrame, view), sharedPreferences.getInt(getString(R.string.color_picker_preference), -1))
+        Util.setBackgroundColor(activity, listOf(shutterFrame, view), sharedPreferences.getInt(getString(R.string.color_picker_preference), -1))
         countdownManager.resetText()
         orientationEventListener.enable()
 
@@ -130,14 +130,8 @@ open class DFNightSelfiesMainFragment : Fragment(), View.OnClickListener {
         permissions.isEmpty() -> {// nothing to do
         }
         permissionManager.checkPermissionResult(grantResults) -> cameraManager.startPreview()
-        else -> exitWithError(R.string.cant_get_front_camera)
+        else -> Util.exitWithError(activity, getString(R.string.permissions_needed))
     }
-
-    private fun exitWithError(errorMessageId: Int) =
-            AlertDialog.Builder(activity).setTitle(getString(R.string.error_title)).setMessage(getString(errorMessageId) + ".\n" + getString(R.string.application_will_terminate) + ".").setPositiveButton("OK") { dialog, _ ->
-                dialog.dismiss()
-                activity.finish()
-            }.create().show()
 
     fun onKeyUp(keyCode: Int) = when (keyCode) {
         KeyEvent.KEYCODE_BACK -> {

@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="application_will_terminate">L\'applicazione verrà chiusa</string>
-    <string name="cant_get_front_camera">Impossibile ottenere la fotocamere frontale</string>
+    <string name="cant_get_front_camera">Impossibile ottenere la fotocamera frontale</string>
     <string name="discard">Annulla</string>
     <string name="save">Salva</string>
     <string name="share">Condividi</string>
@@ -27,4 +27,5 @@
     <string name="gallery">Galleria</string>
     <string name="preview">Anteprima</string>
     <string name="error_title">Errore</string>
+    <string name="permissions_needed">L\'applicazione richiede i permessi per fotocamera e archiviazione</string>
 </resources>
