@@ -60,7 +60,7 @@ class CameraManager(private val activity: Activity,
                 orientationEventListener.setCameraManager(this, cameraInfo.orientation)
                 orientationEventListener.onOrientationChanged(OrientationEventListener.ORIENTATION_UNKNOWN)
             } catch (e: RuntimeException) {
-                LogHelper.log(activity, "Can't open camera " + i + ": " + e.localizedMessage)
+                Util.log(activity, "Can't open camera " + i + ": " + e.localizedMessage)
                 Util.exitWithError(activity, activity.getString(R.string.cant_get_front_camera))
             }
         }

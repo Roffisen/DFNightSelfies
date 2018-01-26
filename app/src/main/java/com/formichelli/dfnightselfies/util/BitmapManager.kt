@@ -39,7 +39,7 @@ class BitmapManager(private val activity: Activity, private val sharedPreference
 
         val pictureFile = getOutputMediaFile()
         if (pictureFile == null) {
-            LogHelper.log(activity, "Error creating media file, check storage permissions")
+            Util.log(activity, "Error creating media file, check storage permissions")
             return
         }
 
@@ -49,9 +49,9 @@ class BitmapManager(private val activity: Activity, private val sharedPreference
             fos.close()
             mediaScanner.scan(pictureFile)
         } catch (e: FileNotFoundException) {
-            LogHelper.log(activity, "File not found: " + e.message)
+            Util.log(activity, "File not found: " + e.message)
         } catch (e: IOException) {
-            LogHelper.log(activity, "Error accessing file: " + e.message)
+            Util.log(activity, "Error accessing file: " + e.message)
         }
     }
 

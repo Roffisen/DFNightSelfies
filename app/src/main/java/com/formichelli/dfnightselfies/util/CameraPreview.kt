@@ -26,7 +26,7 @@ class CameraPreview(private val activity: Activity, private val cameraManager: C
             if (photoActionButtons.visibility == View.GONE)
                 cameraManager.startPreview()
         } catch (e: Exception) {
-            LogHelper.log(activity, "Error setting camera preview: " + e.message)
+            Util.log(activity, "Error setting camera preview: " + e.message)
         }
 
     }

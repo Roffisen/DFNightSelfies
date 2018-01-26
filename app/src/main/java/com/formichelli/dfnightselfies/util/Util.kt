@@ -2,10 +2,13 @@ package com.formichelli.dfnightselfies.util
 
 import android.app.Activity
 import android.app.AlertDialog
+import android.content.Context
 import android.os.Build
+import android.util.Log
 import android.view.View
 import android.view.Window
 import android.view.WindowManager
+import android.widget.Toast
 import com.formichelli.dfnightselfies.R
 
 object Util {
@@ -38,8 +41,14 @@ object Util {
     }
 
     fun exitWithError(activity: Activity, errorMessage: String) =
-            AlertDialog.Builder(activity).setTitle(activity.getString(R.string.error_title)).setMessage(errorMessage + ".\n" + activity.getString(R.string.application_will_terminate) + ".").setPositiveButton("OK") { dialog, _ ->
+            AlertDialog.Builder(activity).setTitle(activity.getString(R.string.error_title)).setMessage(errorMessage + ".\n" + activity.getString(R.string.application_will_terminate) + ".").setCancelable(false).setPositiveButton("OK") { dialog, _ ->
                 dialog.dismiss()
                 activity.finish()
             }.create().show()
+
+    fun log(context: Context, message: String, showToast: Boolean = false) {
+        Log.e("DFNightSelfies", message)
+        if (showToast)
+            Toast.makeText(context, message, Toast.LENGTH_LONG).show()
+    }
 }
