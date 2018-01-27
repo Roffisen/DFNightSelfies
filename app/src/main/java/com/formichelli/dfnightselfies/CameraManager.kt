@@ -3,10 +3,10 @@
 package com.formichelli.dfnightselfies
 
 import android.app.Activity
-import android.content.SharedPreferences
 import android.content.pm.PackageManager
 import android.hardware.Camera
 import android.media.MediaActionSound
+import android.media.MediaRecorder
 import android.os.Build
 import android.view.OrientationEventListener
 import android.view.SurfaceHolder
@@ -14,7 +14,9 @@ import android.view.View
 import android.widget.FrameLayout
 import android.widget.ImageView
 import android.widget.LinearLayout
+import com.formichelli.dfnightselfies.preference.PreferenceManager
 import com.formichelli.dfnightselfies.util.*
+import java.io.IOException
 
 class CameraManager(private val activity: Activity,
                     private val stateMachine: StateMachine,
@@ -25,13 +27,21 @@ class CameraManager(private val activity: Activity,
                     private val photoPreview: ImageView,
                     private val photoActionButtons: LinearLayout,
                     private val shutterFrame: FrameLayout,
-                    private val sharedPreferences: SharedPreferences) : Camera.PictureCallback {
+                    private val preferenceManager: PreferenceManager) : Camera.PictureCallback {
     private var camera: Camera? = null
+    private lateinit var bestPhotoOrVideoSize: Camera.Size
+    private var mediaRecorder: MediaRecorder? = null
     private var cameraSurface: CameraPreview? = null
+    private var displayOrientation = 0
     private var cameraRotation = 0
-    private fun shouldPlaySound() = sharedPreferences.getBoolean(activity.getString(R.string.shutter_sound_preference), false)
+    var photoOrVideo = true
+        set (value) {
+            field = value
+            releaseCamera()
+            restartPreview()
+        }
 
-    private fun initializeCamera() {
+    private fun initializeCamera(photoOrVideo: Boolean) {
         if (camera != null)
             return
 
@@ -52,7 +62,7 @@ class CameraManager(private val activity: Activity,
                     camera.enableShutterSound(false)
                 }
 
-                previewSizeManager.initializePreviewSize(camera)
+                bestPhotoOrVideoSize = previewSizeManager.initializePreviewSize(camera, photoOrVideo)
 
                 cameraSurface = CameraPreview(activity, this, photoActionButtons)
                 cameraPreview.removeAllViews()
@@ -60,13 +70,22 @@ class CameraManager(private val activity: Activity,
                 orientationEventListener.setCameraManager(this, cameraInfo.orientation)
                 orientationEventListener.onOrientationChanged(OrientationEventListener.ORIENTATION_UNKNOWN)
             } catch (e: RuntimeException) {
-                Util.log(activity, "Can't open camera " + i + ": " + e.localizedMessage)
-                Util.exitWithError(activity, activity.getString(R.string.cant_get_front_camera))
+                cantGetCameraError(e)
             }
         }
     }
 
-    fun releaseCamera() {
+    private fun cantGetCameraError(e: Exception) {
+        Util.log(activity, activity.getString(R.string.cant_get_front_camera) + ": " + e.localizedMessage)
+        Util.exitWithError(activity, activity.getString(R.string.cant_get_front_camera))
+    }
+
+    fun release() {
+        releaseCamera()
+        releaseMediaRecorder()
+    }
+
+    private fun releaseCamera() {
         camera?.stopPreview()
         camera?.release()
         camera = null
@@ -77,7 +96,8 @@ class CameraManager(private val activity: Activity,
             return
         }
 
-        initializeCamera()
+        initializeCamera(photoOrVideo)
+
         val camera = camera ?: return
         val cameraSurface = cameraSurface ?: return
 
@@ -93,8 +113,24 @@ class CameraManager(private val activity: Activity,
         startPreview()
     }
 
-    fun takePicture(force: Boolean = false) {
-        if (!force && stateMachine.currentState != StateMachine.State.BEFORE_TAKING)
+    fun takePictureOrVideo() {
+        if (photoOrVideo) {
+            takePicture()
+        } else {
+            if (stateMachine.currentState != StateMachine.State.WHILE_TAKING)
+                startVideoRecording()
+            else
+                stopVideoRecording()
+        }
+    }
+
+    fun takePicture(fromCountdown: Boolean = false) {
+        val shouldTakePicture = when (stateMachine.currentState) {
+            StateMachine.State.DURING_TIMER -> fromCountdown
+            StateMachine.State.BEFORE_TAKING -> true
+            else -> false
+        }
+        if (!shouldTakePicture)
             return
 
         val camera = camera ?: return
@@ -107,8 +143,70 @@ class CameraManager(private val activity: Activity,
         }
     }
 
+    private fun startVideoRecording() {
+        if (preferenceManager.shouldPlaySound && Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN) {
+            MediaActionSound().play(MediaActionSound.START_VIDEO_RECORDING)
+        }
+
+        initializeMediaRecorder()
+        mediaRecorder?.start()
+        stateMachine.currentState = StateMachine.State.WHILE_TAKING
+    }
+
+    private fun stopVideoRecording() {
+        if (preferenceManager.shouldPlaySound && Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN) {
+            MediaActionSound().play(MediaActionSound.STOP_VIDEO_RECORDING)
+        }
+
+        releaseMediaRecorder()
+
+        // TODO add video playback
+        cameraSurface?.visibility = View.GONE
+
+        stateMachine.currentState = StateMachine.State.AFTER_TAKING
+    }
+
+    private fun initializeMediaRecorder() {
+        if (mediaRecorder != null)
+            return
+        val camera = camera ?: return
+
+        val mediaRecorder = MediaRecorder()
+        camera.stopPreview()
+        camera.unlock()
+        mediaRecorder.setCamera(camera)
+        mediaRecorder.setOrientationHint(if (displayOrientation == 90) 270 else 90)
+        mediaRecorder.setPreviewDisplay(cameraSurface!!.holder.surface)
+        mediaRecorder.setAudioSource(MediaRecorder.AudioSource.DEFAULT)
+        mediaRecorder.setVideoSource(MediaRecorder.VideoSource.CAMERA)
+        mediaRecorder.setOutputFormat(MediaRecorder.OutputFormat.MPEG_4)
+        mediaRecorder.setAudioEncoder(MediaRecorder.AudioEncoder.AAC)
+        mediaRecorder.setAudioEncodingBitRate(preferenceManager.audioBitRate)
+        mediaRecorder.setAudioSamplingRate(preferenceManager.audioSamplingRate)
+        mediaRecorder.setVideoEncoder(MediaRecorder.VideoEncoder.H264)
+        mediaRecorder.setVideoSize(bestPhotoOrVideoSize.width, bestPhotoOrVideoSize.height)
+        mediaRecorder.setVideoFrameRate(preferenceManager.frameRate)
+        mediaRecorder.setVideoEncodingBitRate(bestPhotoOrVideoSize.width * bestPhotoOrVideoSize.height * preferenceManager.frameRate)
+
+        mediaRecorder.setOutputFile(Util.getOutputFilePath(activity, false, preferenceManager.saveToGallery))
+
+        try {
+            mediaRecorder.prepare()
+        } catch (e: IOException) {
+            cantGetCameraError(e)
+        }
+
+        this.mediaRecorder = mediaRecorder
+    }
+
+    private fun releaseMediaRecorder() {
+        mediaRecorder?.stop()
+        mediaRecorder?.release()
+        mediaRecorder = null
+    }
+
     private val shutterCallback = Camera.ShutterCallback {
-        if (shouldPlaySound() && Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN) {
+        if (preferenceManager.shouldPlaySound && Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN) {
             MediaActionSound().play(MediaActionSound.SHUTTER_CLICK)
         }
 
@@ -131,7 +229,11 @@ class CameraManager(private val activity: Activity,
     }
 
     fun setPreviewDisplay(holder: SurfaceHolder) = camera?.setPreviewDisplay(holder)
-    fun setDisplayOrientation(displayOrientation: Int) = camera?.setDisplayOrientation(displayOrientation)
+
+    fun setDisplayOrientation(displayOrientation_: Int) {
+        displayOrientation = displayOrientation_
+        camera?.setDisplayOrientation(displayOrientation)
+    }
 
     fun setRotation(cameraRotation_: Int) {
         cameraRotation = cameraRotation_

@@ -7,15 +7,15 @@ import android.support.v4.app.ActivityCompat
 import android.support.v4.content.ContextCompat
 
 class PermissionManager(private val activity: Activity) {
-    private val permissionToIdMap = mutableMapOf(
-            Manifest.permission.CAMERA to 1,
-            Manifest.permission.WRITE_EXTERNAL_STORAGE to 2
-    )
+    private val permissionToIdMap = arrayOf(
+            Manifest.permission.CAMERA,
+            Manifest.permission.RECORD_AUDIO,
+            Manifest.permission.WRITE_EXTERNAL_STORAGE)
 
     private var permissionsGranted = false
 
     fun checkPermissions(): Boolean {
-        permissionToIdMap.keys.forEach {
+        permissionToIdMap.forEach {
             if (ContextCompat.checkSelfPermission(activity, it) != PackageManager.PERMISSION_GRANTED) {
                 requestPermissions()
                 return false
@@ -26,7 +26,7 @@ class PermissionManager(private val activity: Activity) {
         return true
     }
 
-    private fun requestPermissions() = ActivityCompat.requestPermissions(activity, permissionToIdMap.keys.toTypedArray(), 0)
+    private fun requestPermissions() = ActivityCompat.requestPermissions(activity, permissionToIdMap, 0)
 
     fun checkPermissionResult(grantResults: IntArray) = grantResults.all { it == PackageManager.PERMISSION_GRANTED }
 }

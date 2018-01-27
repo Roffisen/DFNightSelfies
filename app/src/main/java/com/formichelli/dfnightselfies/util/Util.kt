@@ -4,12 +4,17 @@ import android.app.Activity
 import android.app.AlertDialog
 import android.content.Context
 import android.os.Build
+import android.os.Environment
 import android.util.Log
 import android.view.View
 import android.view.Window
 import android.view.WindowManager
 import android.widget.Toast
 import com.formichelli.dfnightselfies.R
+import java.io.File
+import java.io.IOException
+import java.text.SimpleDateFormat
+import java.util.*
 
 object Util {
     fun setupWindow(activity: Activity) {
@@ -45,6 +50,22 @@ object Util {
                 dialog.dismiss()
                 activity.finish()
             }.create().show()
+
+    fun getOutputFilePath(activity: Activity, photoOrVideo: Boolean, saveToGallery: Boolean): String {
+        if (Environment.getExternalStorageState() != Environment.MEDIA_MOUNTED)
+            throw IOException()
+
+        val mediaStorageDir =
+                if (saveToGallery)
+                    Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DCIM)
+                else
+                    File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_PICTURES), activity.getString(R.string.save_to_gallery_folder))
+
+        if (!mediaStorageDir.exists() && !mediaStorageDir.mkdirs())
+            throw IOException()
+
+        return mediaStorageDir.path + File.separator + "DF_" + (if (photoOrVideo) "IMG" else "VID") + "_" + SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(Date()) + "." + (if (photoOrVideo) "jpg" else "mp4")
+    }
 
     fun log(context: Context, message: String, showToast: Boolean = false) {
         Log.e("DFNightSelfies", message)

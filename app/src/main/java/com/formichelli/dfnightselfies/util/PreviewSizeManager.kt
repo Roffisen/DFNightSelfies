@@ -4,29 +4,25 @@ package com.formichelli.dfnightselfies.util
 
 import android.app.Activity
 import android.content.Context
-import android.content.SharedPreferences
 import android.graphics.PixelFormat
 import android.hardware.Camera
 import android.view.Surface
 import android.view.WindowManager
 import android.widget.FrameLayout
 import android.widget.ImageView
-import com.formichelli.dfnightselfies.R
+import com.formichelli.dfnightselfies.preference.PreferenceManager
 
-class PreviewSizeManager(private val activity: Activity, private val sharedPreferences: SharedPreferences, private val cameraPreview: FrameLayout, private val photoPreview: ImageView) {
+class PreviewSizeManager(private val activity: Activity, private val preferenceManager: PreferenceManager, private val cameraPreview: FrameLayout, private val photoPreview: ImageView) {
     private val scaleFactor = 1.5
     private val maxScale = 1
     private val minScale = -2
 
-    private var scale: Int = sharedPreferences.getInt("scaleFactor", 0)
-
-    fun initializePreviewSize(camera: Camera) {
-
+    fun initializePreviewSize(camera: Camera, photoOrVideo: Boolean): Camera.Size {
         val display = activity.windowManager.defaultDisplay
         val cameraPreviewHeight = display.height / 3
 
-        val ratioFromPreference = Ratio.fromLabel(sharedPreferences.getString(activity.getString(R.string.ratio_preference), "ANY"))
-        val (bestPictureSize, bestPreviewSize) = getBestSizes(camera, ratioFromPreference)
+        val ratioFromPreference = Ratio.fromLabel(preferenceManager.ratio)
+        val (bestPhotoOrVideoSize, bestPreviewSize) = getBestSizes(camera, ratioFromPreference, photoOrVideo)
 
         val (portrait, displayOrientation, cameraRotation) = getRotationTriple()
 
@@ -45,7 +41,7 @@ class PreviewSizeManager(private val activity: Activity, private val sharedPrefe
         photoPreviewParams.height = (cameraPreviewParams.height * scaleFactor).toInt()
         photoPreview.layoutParams = photoPreviewParams
 
-        val scaleFactor = Math.pow(scaleFactor, scale.toDouble())
+        val scaleFactor = Math.pow(scaleFactor, preferenceManager.scale.toDouble())
         cameraPreviewParams.width = (cameraPreviewParams.width * scaleFactor).toInt()
         cameraPreviewParams.height = (cameraPreviewParams.height * scaleFactor).toInt()
         cameraPreview.layoutParams = cameraPreviewParams
@@ -54,8 +50,10 @@ class PreviewSizeManager(private val activity: Activity, private val sharedPrefe
         mCameraParameters.setRotation(cameraRotation)
         mCameraParameters.pictureFormat = PixelFormat.JPEG
         mCameraParameters.setPreviewSize(bestPreviewSize.width, bestPreviewSize.height)
-        mCameraParameters.setPictureSize(bestPictureSize.width, bestPictureSize.height)
+        mCameraParameters.setPictureSize(bestPhotoOrVideoSize.width, bestPhotoOrVideoSize.height)
         camera.parameters = mCameraParameters
+
+        return bestPhotoOrVideoSize
     }
 
     private fun getRotationTriple(): Triple<Boolean, Int, Int> {
@@ -73,9 +71,9 @@ class PreviewSizeManager(private val activity: Activity, private val sharedPrefe
         }
     }
 
-    private fun getBestSizes(camera: Camera, ratio: Ratio): Pair<Camera.Size, Camera.Size> {
-        val pictureSizes = camera.parameters.supportedPictureSizes
-        if (pictureSizes.isEmpty())
+    private fun getBestSizes(camera: Camera, ratio: Ratio, photoOrVideo: Boolean): Pair<Camera.Size, Camera.Size> {
+        val photoOrVideoSizes = if (photoOrVideo) camera.parameters.supportedPictureSizes else camera.parameters.supportedVideoSizes
+        if (photoOrVideoSizes.isEmpty())
             throw IllegalStateException("No picture sizes available")
 
         val previewSizes = camera.parameters.supportedPreviewSizes
@@ -83,9 +81,9 @@ class PreviewSizeManager(private val activity: Activity, private val sharedPrefe
             throw IllegalStateException("No preview sizes available")
 
         var maxPictureSizeValue = 0
-        var bestPictureSize = pictureSizes[0]
+        var bestPictureSize = photoOrVideoSizes[0]
         var bestPictureRatio: Ratio? = null
-        pictureSizes.forEach {
+        photoOrVideoSizes.forEach {
             if (!ratio.matches(it.width, it.height))
                 return@forEach
 
@@ -98,7 +96,7 @@ class PreviewSizeManager(private val activity: Activity, private val sharedPrefe
         }
 
         if (bestPictureRatio == null)
-            return getBestSizes(camera, Ratio.ANY)
+            return getBestSizes(camera, Ratio.ANY, photoOrVideo)
 
         var maxPreviewSizeValue = 0
         var bestPreviewSize = previewSizes[0]
@@ -119,9 +117,9 @@ class PreviewSizeManager(private val activity: Activity, private val sharedPrefe
     fun resizePreview(scaleDifference: Int) {
         val effectiveScaleCount = when {
         // don't scale more than maxScale
-            scaleDifference + scale > maxScale -> maxScale - scale
+            scaleDifference + preferenceManager.scale > maxScale -> maxScale - preferenceManager.scale
         // don't scale less than minScale
-            scaleDifference + scale < minScale -> minScale - scale
+            scaleDifference + preferenceManager.scale < minScale -> minScale - preferenceManager.scale
             else -> scaleDifference
         }
 
@@ -135,8 +133,6 @@ class PreviewSizeManager(private val activity: Activity, private val sharedPrefe
         cameraPreviewParams.height = (cameraPreview.height * scaleFactor).toInt()
         cameraPreview.layoutParams = cameraPreviewParams
 
-        scale += effectiveScaleCount
-
-        sharedPreferences.edit().putInt("scaleFactor", scale).apply()
+        preferenceManager.scale += effectiveScaleCount
     }
 }

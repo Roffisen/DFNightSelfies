@@ -27,6 +27,17 @@
         android:contentDescription="@string/gallery"
         tools:ignore="RtlHardcoded" />
 
+    <ImageButton
+        android:id="@+id/photoOrVideo"
+        android:layout_width="@dimen/buttons_size"
+        android:layout_height="wrap_content"
+        android:layout_gravity="left|bottom"
+        android:layout_margin="10dp"
+        android:background="#000000FF"
+        android:src="@drawable/video"
+        android:contentDescription="@string/photo_or_video"
+        tools:ignore="RtlHardcoded" />
+
     <TextView
         android:id="@+id/countdown"
         android:layout_width="wrap_content"

@@ -17,6 +17,7 @@ import com.google.android.gms.ads.AdRequest
 import com.google.android.gms.ads.AdSize
 import com.google.android.gms.ads.AdView
 import com.kizitonwose.colorpreference.ColorPreference
+import java.io.File
 
 class DFNightSelfiesPreferences : PreferenceActivity(), SharedPreferences.OnSharedPreferenceChangeListener {
     public override fun onCreate(savedInstanceState: Bundle?) {
@@ -69,7 +70,7 @@ class DFNightSelfiesPreferences : PreferenceActivity(), SharedPreferences.OnShar
                         Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DCIM).absolutePath
                     } else {
                         Environment.getExternalStoragePublicDirectory(
-                                Environment.DIRECTORY_PICTURES).absolutePath + "/" + getString(R.string.save_to_gallery_folder)
+                                Environment.DIRECTORY_PICTURES).absolutePath + File.separator + getString(R.string.save_to_gallery_folder)
                     }
 
                     preference.setSummary(getString(R.string.save_to_gallery_summary, Environment.getExternalStoragePublicDirectory(

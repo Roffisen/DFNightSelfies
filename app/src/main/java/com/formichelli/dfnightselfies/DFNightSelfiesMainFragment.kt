@@ -5,12 +5,9 @@ package com.formichelli.dfnightselfies
 import android.app.AlertDialog
 import android.app.Fragment
 import android.content.Intent
-import android.content.SharedPreferences
 import android.content.pm.ActivityInfo
-import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Bundle
-import android.preference.PreferenceManager
 import android.support.v4.content.FileProvider
 import android.view.KeyEvent
 import android.view.LayoutInflater
@@ -18,12 +15,14 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.LinearLayout
 import com.formichelli.dfnightselfies.preference.DFNightSelfiesPreferences
+import com.formichelli.dfnightselfies.preference.PreferenceManager
 import com.formichelli.dfnightselfies.util.*
 import kotlinx.android.synthetic.main.buttons.*
 import kotlinx.android.synthetic.main.fragment_dfnightselfies_main.*
 import java.io.File
 
 open class DFNightSelfiesMainFragment : Fragment(), View.OnClickListener {
+    private lateinit var preferenceManager: PreferenceManager
     protected lateinit var cameraManager: CameraManager
     private lateinit var countdownManager: CountdownManager
     private lateinit var stateMachine: StateMachine
@@ -40,18 +39,19 @@ open class DFNightSelfiesMainFragment : Fragment(), View.OnClickListener {
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View? =
             inflater.inflate(R.layout.fragment_dfnightselfies_main, container, false)
 
+
     override fun onActivityCreated(savedInstanceState: Bundle?) {
         super.onActivityCreated(savedInstanceState)
 
-        val sharedPreferences = PreferenceManager.getDefaultSharedPreferences(activity) ?: return
+        preferenceManager = PreferenceManager(activity)
 
-        previewSizeManager = PreviewSizeManager(activity, sharedPreferences, cameraPreview, photoPreview)
+        previewSizeManager = PreviewSizeManager(activity, preferenceManager, cameraPreview, photoPreview)
         orientationEventListener = MyOrientationEventListener(activity)
-        bitmapManager = BitmapManager(activity, sharedPreferences)
-        countdownManager = CountdownManager(activity, countdown, sharedPreferences)
-        stateMachine = StateMachine(activity, getPhotoActionButtons(), arrayOf(settings, gallery, countdown), countdownManager)
+        bitmapManager = BitmapManager(activity, preferenceManager)
+        countdownManager = CountdownManager(activity, countdown, preferenceManager)
+        stateMachine = StateMachine(activity, getPhotoActionButtons(), arrayOf(settings, gallery, photoOrVideo, countdown), countdownManager)
         permissionManager = PermissionManager(activity)
-        cameraManager = CameraManager(activity, stateMachine, cameraPreview, orientationEventListener, previewSizeManager, bitmapManager, photoPreview, getPhotoActionButtons(), shutterFrame, sharedPreferences)
+        cameraManager = CameraManager(activity, stateMachine, cameraPreview, orientationEventListener, previewSizeManager, bitmapManager, photoPreview, getPhotoActionButtons(), shutterFrame, preferenceManager)
         countdownManager.cameraManager = cameraManager
 
         mediaScanner = SingleMediaScanner(activity)
@@ -59,17 +59,9 @@ open class DFNightSelfiesMainFragment : Fragment(), View.OnClickListener {
         setOnClickListeners()
     }
 
-    private fun showWelcomeDialogAndThen(sharedPreferences: SharedPreferences, then: () -> Unit) {
-        if (sharedPreferences.getInt("lastRunVersion", 0) < 7) {
-            AlertDialog.Builder(activity).setTitle(R.string.welcome).setMessage(R.string.welcome_text).setNeutralButton("OK") { _, _ ->
-                val currentVersion = try {
-                    activity.packageManager.getPackageInfo(activity.packageName, 0).versionCode
-                } catch (e: PackageManager.NameNotFoundException) {
-                    0
-                }
-
-                sharedPreferences.edit().putInt("lastRunVersion", currentVersion).apply()
-
+    private fun showWelcomeDialogAndThen(then: () -> Unit) {
+        if (preferenceManager.lastRunVersion < 7) {
+            AlertDialog.Builder(activity).setTitle(R.string.welcome).setMessage(R.string.welcome_text).setCancelable(false).setNeutralButton("OK") { _, _ ->
                 then()
             }.show()
         } else {
@@ -86,6 +78,8 @@ open class DFNightSelfiesMainFragment : Fragment(), View.OnClickListener {
 
         gallery.setOnClickListener(this)
 
+        photoOrVideo.setOnClickListener(this)
+
         countdown.setOnClickListener(this)
 
         for (i in 0 until getPhotoActionButtons().childCount)
@@ -95,15 +89,12 @@ open class DFNightSelfiesMainFragment : Fragment(), View.OnClickListener {
     override fun onStart() {
         super.onStart()
 
-        val sharedPreferences = PreferenceManager.getDefaultSharedPreferences(activity) ?: return
-
-        takeWithVolume = sharedPreferences.getBoolean(getString(R.string.take_with_volume_preference), false)
-        Util.setBackgroundColor(activity, listOf(shutterFrame, view), sharedPreferences.getInt(getString(R.string.color_picker_preference), -1))
+        Util.setBackgroundColor(activity, listOf(shutterFrame, view), preferenceManager.color)
         countdownManager.resetText()
         orientationEventListener.enable()
 
         // The first time show a welcome dialog, the other times initialize camera as soon as the camera preview frame is ready
-        showWelcomeDialogAndThen(sharedPreferences) {
+        showWelcomeDialogAndThen {
             if (permissionManager.checkPermissions()) {
                 cameraManager.startPreview()
             }
@@ -113,7 +104,7 @@ open class DFNightSelfiesMainFragment : Fragment(), View.OnClickListener {
     override fun onStop() {
         super.onStop()
 
-        cameraManager.releaseCamera()
+        cameraManager.release()
 
         orientationEventListener.disable()
     }
@@ -121,7 +112,7 @@ open class DFNightSelfiesMainFragment : Fragment(), View.OnClickListener {
     override fun onDestroy() {
         super.onDestroy()
 
-        cameraManager.releaseCamera()
+        cameraManager.release()
 
         countdownManager.cancel()
     }
@@ -145,7 +136,7 @@ open class DFNightSelfiesMainFragment : Fragment(), View.OnClickListener {
 
         KeyEvent.KEYCODE_VOLUME_DOWN, KeyEvent.KEYCODE_VOLUME_UP -> {
             if (takeWithVolume)
-                cameraManager.takePicture()
+                cameraManager.takePictureOrVideo()
             else if (getPhotoActionButtons().visibility != View.VISIBLE)
                 previewSizeManager.resizePreview(if (keyCode == KeyEvent.KEYCODE_VOLUME_DOWN) -1 else 1)
 
@@ -160,7 +151,7 @@ open class DFNightSelfiesMainFragment : Fragment(), View.OnClickListener {
     override fun onClick(v: View) {
         when (v.id) {
             view.id -> {
-                cameraManager.takePicture()
+                cameraManager.takePictureOrVideo()
             }
 
             R.id.save -> {
@@ -182,6 +173,11 @@ open class DFNightSelfiesMainFragment : Fragment(), View.OnClickListener {
             R.id.countdown -> countdownManager.onClick(stateMachine)
 
             R.id.gallery -> showGallery()
+
+            R.id.photoOrVideo -> {
+                cameraManager.photoOrVideo = !cameraManager.photoOrVideo
+                photoOrVideo.setImageResource(if (cameraManager.photoOrVideo) R.drawable.video else R.drawable.camera)
+            }
         }
     }
 

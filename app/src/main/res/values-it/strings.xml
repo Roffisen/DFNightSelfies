@@ -28,4 +28,5 @@
     <string name="preview">Anteprima</string>
     <string name="error_title">Errore</string>
     <string name="permissions_needed">L\'applicazione richiede i permessi per fotocamera e archiviazione</string>
+    <string name="photo_or_video">Foto o video</string>
 </resources>
