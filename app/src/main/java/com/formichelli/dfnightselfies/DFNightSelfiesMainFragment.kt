@@ -32,13 +32,10 @@ open class DFNightSelfiesMainFragment : Fragment(), View.OnClickListener {
     private lateinit var mediaScanner: SingleMediaScanner
     protected lateinit var bitmapManager: BitmapManager
 
-    private var takeWithVolume: Boolean = false
-
     protected open fun getPhotoActionButtons(): LinearLayout = photoActionButtons
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View? =
             inflater.inflate(R.layout.fragment_dfnightselfies_main, container, false)
-
 
     override fun onActivityCreated(savedInstanceState: Bundle?) {
         super.onActivityCreated(savedInstanceState)
@@ -49,9 +46,9 @@ open class DFNightSelfiesMainFragment : Fragment(), View.OnClickListener {
         orientationEventListener = MyOrientationEventListener(activity)
         bitmapManager = BitmapManager(activity, preferenceManager)
         countdownManager = CountdownManager(activity, countdown, preferenceManager)
-        stateMachine = StateMachine(activity, getPhotoActionButtons(), arrayOf(settings, gallery, photoOrVideo, countdown), countdownManager)
+        stateMachine = StateMachine(activity, getPhotoActionButtons(), arrayOf(settings, gallery, photoOrVideo, countdown), countdownManager, photoPreview)
         permissionManager = PermissionManager(activity)
-        cameraManager = CameraManager(activity, stateMachine, cameraPreview, orientationEventListener, previewSizeManager, bitmapManager, photoPreview, getPhotoActionButtons(), shutterFrame, preferenceManager)
+        cameraManager = CameraManager(activity, stateMachine, cameraPreview, orientationEventListener, previewSizeManager, bitmapManager, getPhotoActionButtons(), shutterFrame, preferenceManager)
         countdownManager.cameraManager = cameraManager
 
         mediaScanner = SingleMediaScanner(activity)
@@ -126,7 +123,7 @@ open class DFNightSelfiesMainFragment : Fragment(), View.OnClickListener {
 
     fun onKeyUp(keyCode: Int) = when (keyCode) {
         KeyEvent.KEYCODE_BACK -> {
-            if (stateMachine.currentState == StateMachine.State.AFTER_TAKING)
+            if (stateMachine.backFromAfterTaking())
                 cameraManager.restartPreview()
             else
                 activity.finish()
@@ -135,7 +132,7 @@ open class DFNightSelfiesMainFragment : Fragment(), View.OnClickListener {
         }
 
         KeyEvent.KEYCODE_VOLUME_DOWN, KeyEvent.KEYCODE_VOLUME_UP -> {
-            if (takeWithVolume)
+            if (preferenceManager.takeWithVolume)
                 cameraManager.takePictureOrVideo()
             else if (getPhotoActionButtons().visibility != View.VISIBLE)
                 previewSizeManager.resizePreview(if (keyCode == KeyEvent.KEYCODE_VOLUME_DOWN) -1 else 1)
@@ -175,8 +172,8 @@ open class DFNightSelfiesMainFragment : Fragment(), View.OnClickListener {
             R.id.gallery -> showGallery()
 
             R.id.photoOrVideo -> {
-                cameraManager.photoOrVideo = !cameraManager.photoOrVideo
-                photoOrVideo.setImageResource(if (cameraManager.photoOrVideo) R.drawable.video else R.drawable.camera)
+                cameraManager.pictureOrVideo = !cameraManager.pictureOrVideo
+                photoOrVideo.setImageResource(if (cameraManager.pictureOrVideo) R.drawable.video else R.drawable.camera)
             }
         }
     }

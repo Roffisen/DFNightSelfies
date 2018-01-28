@@ -29,18 +29,14 @@ class CountdownManager(private val activity: Activity, private val countdown: Te
     }
 
     fun onClick(stateMachine: StateMachine) {
-        if (stateMachine.currentState != StateMachine.State.BEFORE_TAKING) {
-            stateMachine.currentState = StateMachine.State.BEFORE_TAKING
+        if (stateMachine.onTimerClick()) {
             selfTimerFuture?.cancel(true)
         } else {
-            stateMachine.currentState = StateMachine.State.DURING_TIMER
             selfTimerFuture = selfTimerScheduler.scheduleAtFixedRate(CountDown(preferenceManager.countdownSeconds), 0, 1, TimeUnit.SECONDS)
         }
     }
 
-    fun cancel() {
-        selfTimerFuture?.cancel(true)
-    }
+    fun cancel() = selfTimerFuture?.cancel(true)
 
     private inner class CountDown constructor(private var value: Int) : Runnable {
         override fun run() {

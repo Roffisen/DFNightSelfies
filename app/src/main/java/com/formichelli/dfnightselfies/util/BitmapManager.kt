@@ -12,8 +12,10 @@ import java.io.IOException
 class BitmapManager(private val activity: Activity, private val preferenceManager: PreferenceManager) {
     var bitmap: Bitmap? = null
 
-    fun fromByteArray(data: ByteArray, cameraRotation: Int) {
-        bitmap = rotate(BitmapFactory.decodeByteArray(data, 0, data.size), cameraRotation)
+    fun fromByteArray(data: ByteArray, cameraRotation: Int): Bitmap {
+        val bitmap = rotate(BitmapFactory.decodeByteArray(data, 0, data.size), cameraRotation)
+        this.bitmap = bitmap
+        return bitmap
     }
 
     private fun rotate(bitmap: Bitmap, cameraRotation: Int): Bitmap {

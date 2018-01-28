@@ -3,16 +3,19 @@ package com.formichelli.dfnightselfies
 import android.app.Activity
 import android.content.Context
 import android.content.pm.ActivityInfo
+import android.graphics.Bitmap
 import android.view.Surface
 import android.view.View
 import android.view.WindowManager
+import android.widget.ImageView
 import android.widget.LinearLayout
+import com.formichelli.dfnightselfies.util.CameraPreview
 import com.formichelli.dfnightselfies.util.CountdownManager
 
-class StateMachine(private val activity: Activity, private val photoActionButtons: LinearLayout, private val beforePhotoButtons: Array<View>, private val countdownManager: CountdownManager) {
-    enum class State { BEFORE_TAKING, DURING_TIMER, WHILE_TAKING, AFTER_TAKING }
+class StateMachine(private val activity: Activity, private val photoActionButtons: LinearLayout, private val beforePhotoButtons: Array<View>, private val countdownManager: CountdownManager, private val photoPreview: ImageView) {
+    private enum class State { BEFORE_TAKING, DURING_TIMER, WHILE_TAKING, AFTER_TAKING }
 
-    var currentState = State.BEFORE_TAKING
+    private var currentState = State.BEFORE_TAKING
         set(value) {
             field = value
             showButtons(value)
@@ -68,4 +71,54 @@ class StateMachine(private val activity: Activity, private val photoActionButton
             }
         }
     }
+
+    fun onTakePictureOrVideo(fromCountdown: Boolean) =
+            if (currentState == State.BEFORE_TAKING || (currentState == State.DURING_TIMER && fromCountdown)) {
+                currentState = State.WHILE_TAKING
+                true
+            } else {
+                false
+            }
+
+    fun onPictureTaken(bitmap: Bitmap, cameraSurface: CameraPreview) {
+        currentState = State.AFTER_TAKING
+
+        photoPreview.setImageBitmap(bitmap)
+        photoPreview.visibility = View.VISIBLE
+        cameraSurface.visibility = View.GONE
+    }
+
+    fun onStartPreview(cameraSurface: CameraPreview) {
+        currentState = State.BEFORE_TAKING
+
+        photoPreview.visibility = View.GONE
+        photoPreview.setImageResource(android.R.color.transparent)
+        cameraSurface.visibility = View.VISIBLE
+    }
+
+    fun startOrStopRecording() =
+            if (currentState == State.BEFORE_TAKING) {
+                currentState = State.WHILE_TAKING
+                true
+            } else {
+                currentState = State.AFTER_TAKING
+                false
+            }
+
+    fun backFromAfterTaking(): Boolean =
+            if (currentState == State.AFTER_TAKING) {
+                currentState = State.BEFORE_TAKING
+                true
+            } else {
+                false
+            }
+
+    fun onTimerClick() =
+            if (currentState != State.BEFORE_TAKING) {
+                currentState = State.BEFORE_TAKING
+                true
+            } else {
+                currentState = State.DURING_TIMER
+                false
+            }
 }

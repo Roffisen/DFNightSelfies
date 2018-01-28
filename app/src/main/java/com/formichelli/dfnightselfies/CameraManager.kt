@@ -12,7 +12,6 @@ import android.view.OrientationEventListener
 import android.view.SurfaceHolder
 import android.view.View
 import android.widget.FrameLayout
-import android.widget.ImageView
 import android.widget.LinearLayout
 import com.formichelli.dfnightselfies.preference.PreferenceManager
 import com.formichelli.dfnightselfies.util.*
@@ -24,7 +23,6 @@ class CameraManager(private val activity: Activity,
                     private val orientationEventListener: MyOrientationEventListener,
                     private val previewSizeManager: PreviewSizeManager,
                     private val bitmapManager: BitmapManager,
-                    private val photoPreview: ImageView,
                     private val photoActionButtons: LinearLayout,
                     private val shutterFrame: FrameLayout,
                     private val preferenceManager: PreferenceManager) : Camera.PictureCallback {
@@ -34,7 +32,7 @@ class CameraManager(private val activity: Activity,
     private var cameraSurface: CameraPreview? = null
     private var displayOrientation = 0
     private var cameraRotation = 0
-    var photoOrVideo = true
+    var pictureOrVideo = true
         set (value) {
             field = value
             releaseCamera()
@@ -92,32 +90,25 @@ class CameraManager(private val activity: Activity,
     }
 
     fun startPreview() {
-        if (stateMachine.currentState != StateMachine.State.BEFORE_TAKING) {
-            return
-        }
-
-        initializeCamera(photoOrVideo)
+        initializeCamera(pictureOrVideo)
 
         val camera = camera ?: return
         val cameraSurface = cameraSurface ?: return
 
-        photoPreview.visibility = View.GONE
-        photoPreview.setImageResource(android.R.color.transparent)
         bitmapManager.bitmap = null
-        cameraSurface.visibility = View.VISIBLE
+        stateMachine.onStartPreview(cameraSurface)
         camera.startPreview()
     }
 
     fun restartPreview() {
-        stateMachine.currentState = StateMachine.State.BEFORE_TAKING
         startPreview()
     }
 
     fun takePictureOrVideo() {
-        if (photoOrVideo) {
+        if (pictureOrVideo) {
             takePicture()
         } else {
-            if (stateMachine.currentState != StateMachine.State.WHILE_TAKING)
+            if (stateMachine.startOrStopRecording())
                 startVideoRecording()
             else
                 stopVideoRecording()
@@ -125,16 +116,11 @@ class CameraManager(private val activity: Activity,
     }
 
     fun takePicture(fromCountdown: Boolean = false) {
-        val shouldTakePicture = when (stateMachine.currentState) {
-            StateMachine.State.DURING_TIMER -> fromCountdown
-            StateMachine.State.BEFORE_TAKING -> true
-            else -> false
-        }
-        if (!shouldTakePicture)
-            return
-
         val camera = camera ?: return
-        stateMachine.currentState = StateMachine.State.WHILE_TAKING
+
+        if (!stateMachine.onTakePictureOrVideo(fromCountdown)) {
+            return
+        }
 
         try {
             camera.takePicture(shutterCallback, null, this)
@@ -150,7 +136,6 @@ class CameraManager(private val activity: Activity,
 
         initializeMediaRecorder()
         mediaRecorder?.start()
-        stateMachine.currentState = StateMachine.State.WHILE_TAKING
     }
 
     private fun stopVideoRecording() {
@@ -162,8 +147,6 @@ class CameraManager(private val activity: Activity,
 
         // TODO add video playback
         cameraSurface?.visibility = View.GONE
-
-        stateMachine.currentState = StateMachine.State.AFTER_TAKING
     }
 
     private fun initializeMediaRecorder() {
@@ -215,17 +198,12 @@ class CameraManager(private val activity: Activity,
 
     override fun onPictureTaken(data: ByteArray, camera_: Camera) {
         val camera = camera ?: return
+        val cameraSurface = cameraSurface ?: return
 
         camera.stopPreview()
         shutterFrame.visibility = View.GONE
 
-        bitmapManager.fromByteArray(data, cameraRotation)
-
-        photoPreview.setImageBitmap(bitmapManager.bitmap)
-        photoPreview.visibility = View.VISIBLE
-        cameraSurface?.visibility = View.GONE
-
-        stateMachine.currentState = StateMachine.State.AFTER_TAKING
+        stateMachine.onPictureTaken(bitmapManager.fromByteArray(data, cameraRotation), cameraSurface)
     }
 
     fun setPreviewDisplay(holder: SurfaceHolder) = camera?.setPreviewDisplay(holder)
