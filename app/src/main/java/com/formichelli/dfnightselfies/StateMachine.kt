@@ -81,10 +81,20 @@ class StateMachine(private val activity: Activity, private val photoActionButton
             }
 
     fun onPictureTaken(bitmap: Bitmap, cameraSurface: CameraPreview) {
-        currentState = State.AFTER_TAKING
+        onPictureOrVideoTaken(cameraSurface)
 
         photoPreview.setImageBitmap(bitmap)
         photoPreview.visibility = View.VISIBLE
+    }
+
+    fun onVideoTaken(cameraSurface: CameraPreview) {
+        onPictureOrVideoTaken(cameraSurface)
+
+        // TODO add video playback
+    }
+
+    private fun onPictureOrVideoTaken(cameraSurface: CameraPreview) {
+        currentState = State.AFTER_TAKING
         cameraSurface.visibility = View.GONE
     }
 

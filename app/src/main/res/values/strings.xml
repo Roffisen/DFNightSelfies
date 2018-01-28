@@ -44,5 +44,6 @@
     <string name="error_title">Error</string>
     <string name="permissions_needed">The application requires the Camera and Storage permissions to run</string>
     <string name="scale_factor_preference">\"scaleFactor\"</string>
-    <string name="last_run_version">lastRunVersion</string>
+    <string name="last_run_version_preference" translatable="false">lastRunVersion</string>
+    <string name="picture_or_video_preference" translatable="false">picture_or_video_preference</string>
 </resources>

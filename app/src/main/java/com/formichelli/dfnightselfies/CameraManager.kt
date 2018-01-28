@@ -32,14 +32,15 @@ class CameraManager(private val activity: Activity,
     private var cameraSurface: CameraPreview? = null
     private var displayOrientation = 0
     private var cameraRotation = 0
-    var pictureOrVideo = true
-        set (value) {
-            field = value
+
+    init {
+        preferenceManager.pictureOrVideoChanged {
             releaseCamera()
             restartPreview()
         }
+    }
 
-    private fun initializeCamera(photoOrVideo: Boolean) {
+    private fun initializeCamera() {
         if (camera != null)
             return
 
@@ -60,7 +61,7 @@ class CameraManager(private val activity: Activity,
                     camera.enableShutterSound(false)
                 }
 
-                bestPhotoOrVideoSize = previewSizeManager.initializePreviewSize(camera, photoOrVideo)
+                bestPhotoOrVideoSize = previewSizeManager.initializePreviewSize(camera, preferenceManager.pictureOrVideo)
 
                 cameraSurface = CameraPreview(activity, this, photoActionButtons)
                 cameraPreview.removeAllViews()
@@ -90,7 +91,7 @@ class CameraManager(private val activity: Activity,
     }
 
     fun startPreview() {
-        initializeCamera(pictureOrVideo)
+        initializeCamera()
 
         val camera = camera ?: return
         val cameraSurface = cameraSurface ?: return
@@ -105,7 +106,7 @@ class CameraManager(private val activity: Activity,
     }
 
     fun takePictureOrVideo() {
-        if (pictureOrVideo) {
+        if (preferenceManager.pictureOrVideo) {
             takePicture()
         } else {
             if (stateMachine.startOrStopRecording())
@@ -139,14 +140,14 @@ class CameraManager(private val activity: Activity,
     }
 
     private fun stopVideoRecording() {
+        val cameraSurface = cameraSurface ?: return
         if (preferenceManager.shouldPlaySound && Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN) {
             MediaActionSound().play(MediaActionSound.STOP_VIDEO_RECORDING)
         }
 
         releaseMediaRecorder()
 
-        // TODO add video playback
-        cameraSurface?.visibility = View.GONE
+        stateMachine.onVideoTaken(cameraSurface)
     }
 
     private fun initializeMediaRecorder() {

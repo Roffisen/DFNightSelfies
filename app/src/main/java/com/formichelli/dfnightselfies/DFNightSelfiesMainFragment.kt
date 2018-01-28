@@ -62,8 +62,12 @@ open class DFNightSelfiesMainFragment : Fragment(), View.OnClickListener {
                 then()
             }.show()
         } else {
+            var thenCalled = false
             cameraPreview.viewTreeObserver.addOnGlobalLayoutListener {
-                then()
+                if (!thenCalled) {
+                    thenCalled = true
+                    then()
+                }
             }
         }
     }
@@ -86,6 +90,7 @@ open class DFNightSelfiesMainFragment : Fragment(), View.OnClickListener {
     override fun onStart() {
         super.onStart()
 
+        setPhotoOrVideoIcon()
         Util.setBackgroundColor(activity, listOf(shutterFrame, view), preferenceManager.color)
         countdownManager.resetText()
         orientationEventListener.enable()
@@ -172,10 +177,14 @@ open class DFNightSelfiesMainFragment : Fragment(), View.OnClickListener {
             R.id.gallery -> showGallery()
 
             R.id.photoOrVideo -> {
-                cameraManager.pictureOrVideo = !cameraManager.pictureOrVideo
-                photoOrVideo.setImageResource(if (cameraManager.pictureOrVideo) R.drawable.video else R.drawable.camera)
+                preferenceManager.switchPictureOrVideo()
+                setPhotoOrVideoIcon()
             }
         }
+    }
+
+    private fun setPhotoOrVideoIcon() {
+        photoOrVideo.setImageResource(if (preferenceManager.pictureOrVideo) R.drawable.video else R.drawable.camera)
     }
 
     private fun getShareUri() = FileProvider.getUriForFile(activity, BuildConfig.APPLICATION_ID + ".provider", File(mediaScanner.file?.absolutePath))

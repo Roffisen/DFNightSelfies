@@ -54,7 +54,7 @@ class PreferenceManager(private val activity: Activity) {
 
     val lastRunVersion: Int
         get() {
-            val lastRunVersion = sharedPreferences.getInt(activity.getString(R.string.last_run_version), 0)
+            val lastRunVersion = sharedPreferences.getInt(activity.getString(R.string.last_run_version_preference), 0)
 
             val currentVersion = try {
                 activity.packageManager.getPackageInfo(activity.packageName, 0).versionCode
@@ -62,7 +62,7 @@ class PreferenceManager(private val activity: Activity) {
                 0
             }
 
-            sharedPreferences.edit().putInt(activity.getString(R.string.last_run_version), currentVersion).commit()
+            sharedPreferences.edit().putInt(activity.getString(R.string.last_run_version_preference), currentVersion).commit()
 
             return lastRunVersion
         }
@@ -72,4 +72,19 @@ class PreferenceManager(private val activity: Activity) {
     val audioBitRate = 196000
 
     val audioSamplingRate = 44100
+
+    val pictureOrVideo: Boolean
+        get() =
+            sharedPreferences.getBoolean(activity.getString(R.string.picture_or_video_preference), true)
+
+    fun switchPictureOrVideo() {
+        sharedPreferences.edit().putBoolean(activity.getString(R.string.picture_or_video_preference), !pictureOrVideo).commit()
+        pictureOrVideoCallback?.invoke()
+    }
+
+    private var pictureOrVideoCallback: (() -> Unit)? = null
+
+    fun pictureOrVideoChanged(callback: () -> Unit) {
+        pictureOrVideoCallback = callback
+    }
 }
