@@ -9,7 +9,6 @@ import android.media.MediaActionSound
 import android.media.MediaRecorder
 import android.os.Build
 import android.view.OrientationEventListener
-import android.view.SurfaceHolder
 import android.view.View
 import android.widget.FrameLayout
 import android.widget.LinearLayout
@@ -32,11 +31,12 @@ class CameraManager(private val activity: Activity,
     private var cameraSurface: CameraPreview? = null
     private var displayOrientation = 0
     private var cameraRotation = 0
+    private var videoOutputFile: String? = null
 
     init {
         preferenceManager.pictureOrVideoChanged {
             releaseCamera()
-            restartPreview()
+            startPreview()
         }
     }
 
@@ -63,9 +63,15 @@ class CameraManager(private val activity: Activity,
 
                 bestPhotoOrVideoSize = previewSizeManager.initializePreviewSize(camera, preferenceManager.pictureOrVideo)
 
-                cameraSurface = CameraPreview(activity, this, photoActionButtons)
-                cameraPreview.removeAllViews()
-                cameraPreview.addView(cameraSurface)
+                cameraSurface = CameraPreview(activity, cameraPreview) {
+                    try {
+                        this.camera?.setPreviewDisplay(it)
+                        if (photoActionButtons.visibility == View.GONE)
+                            startPreview()
+                    } catch (e: Exception) {
+                        Util.log(activity, "Error setting camera preview: " + e.message)
+                    }
+                }
                 orientationEventListener.setCameraManager(this, cameraInfo.orientation)
                 orientationEventListener.onOrientationChanged(OrientationEventListener.ORIENTATION_UNKNOWN)
             } catch (e: RuntimeException) {
@@ -101,10 +107,6 @@ class CameraManager(private val activity: Activity,
         camera.startPreview()
     }
 
-    fun restartPreview() {
-        startPreview()
-    }
-
     fun takePictureOrVideo() {
         if (preferenceManager.pictureOrVideo) {
             takePicture()
@@ -126,7 +128,7 @@ class CameraManager(private val activity: Activity,
         try {
             camera.takePicture(shutterCallback, null, this)
         } catch (e: Exception) {
-            restartPreview()
+            startPreview()
         }
     }
 
@@ -147,7 +149,7 @@ class CameraManager(private val activity: Activity,
 
         releaseMediaRecorder()
 
-        stateMachine.onVideoTaken(cameraSurface)
+        stateMachine.onVideoTaken(cameraSurface, videoOutputFile!!)
     }
 
     private fun initializeMediaRecorder() {
@@ -158,8 +160,9 @@ class CameraManager(private val activity: Activity,
         val mediaRecorder = MediaRecorder()
         camera.stopPreview()
         camera.unlock()
+        this.camera = null
         mediaRecorder.setCamera(camera)
-        mediaRecorder.setOrientationHint(if (displayOrientation == 90) 270 else 90)
+        mediaRecorder.setOrientationHint(if (displayOrientation == 90) 270 else displayOrientation)
         mediaRecorder.setPreviewDisplay(cameraSurface!!.holder.surface)
         mediaRecorder.setAudioSource(MediaRecorder.AudioSource.DEFAULT)
         mediaRecorder.setVideoSource(MediaRecorder.VideoSource.CAMERA)
@@ -172,7 +175,8 @@ class CameraManager(private val activity: Activity,
         mediaRecorder.setVideoFrameRate(preferenceManager.frameRate)
         mediaRecorder.setVideoEncodingBitRate(bestPhotoOrVideoSize.width * bestPhotoOrVideoSize.height * preferenceManager.frameRate)
 
-        mediaRecorder.setOutputFile(Util.getOutputFilePath(activity, false, preferenceManager.saveToGallery))
+        videoOutputFile = Util.getOutputFilePath(activity, false, preferenceManager.saveToGallery)
+        mediaRecorder.setOutputFile(videoOutputFile)
 
         try {
             mediaRecorder.prepare()
@@ -204,10 +208,8 @@ class CameraManager(private val activity: Activity,
         camera.stopPreview()
         shutterFrame.visibility = View.GONE
 
-        stateMachine.onPictureTaken(bitmapManager.fromByteArray(data, cameraRotation), cameraSurface)
+        stateMachine.onPictureTaken(cameraSurface, bitmapManager.fromByteArray(data, cameraRotation))
     }
-
-    fun setPreviewDisplay(holder: SurfaceHolder) = camera?.setPreviewDisplay(holder)
 
     fun setDisplayOrientation(displayOrientation_: Int) {
         displayOrientation = displayOrientation_

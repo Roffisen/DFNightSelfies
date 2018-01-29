@@ -10,9 +10,10 @@ import android.view.Surface
 import android.view.WindowManager
 import android.widget.FrameLayout
 import android.widget.ImageView
+import android.widget.VideoView
 import com.formichelli.dfnightselfies.preference.PreferenceManager
 
-class PreviewSizeManager(private val activity: Activity, private val preferenceManager: PreferenceManager, private val cameraPreview: FrameLayout, private val photoPreview: ImageView) {
+class PreviewSizeManager(private val activity: Activity, private val preferenceManager: PreferenceManager, private val cameraPreview: FrameLayout, private val photoPreview: ImageView, private val videoPreview: VideoView) {
     private val scaleFactor = 1.5
     private val maxScale = 1
     private val minScale = -2
@@ -40,6 +41,11 @@ class PreviewSizeManager(private val activity: Activity, private val preferenceM
         photoPreviewParams.width = (cameraPreviewParams.width * scaleFactor).toInt()
         photoPreviewParams.height = (cameraPreviewParams.height * scaleFactor).toInt()
         photoPreview.layoutParams = photoPreviewParams
+
+        val videoPreviewParams = videoPreview.layoutParams as FrameLayout.LayoutParams
+        videoPreviewParams.width = (cameraPreviewParams.width * scaleFactor).toInt()
+        videoPreviewParams.height = (cameraPreviewParams.width * scaleFactor).toInt()
+        videoPreview.layoutParams = videoPreviewParams
 
         val scaleFactor = Math.pow(scaleFactor, preferenceManager.scale.toDouble())
         cameraPreviewParams.width = (cameraPreviewParams.width * scaleFactor).toInt()

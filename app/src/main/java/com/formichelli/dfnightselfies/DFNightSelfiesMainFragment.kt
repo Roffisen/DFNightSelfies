@@ -42,11 +42,11 @@ open class DFNightSelfiesMainFragment : Fragment(), View.OnClickListener {
 
         preferenceManager = PreferenceManager(activity)
 
-        previewSizeManager = PreviewSizeManager(activity, preferenceManager, cameraPreview, photoPreview)
+        previewSizeManager = PreviewSizeManager(activity, preferenceManager, cameraPreview, photoPreview, videoPreview)
         orientationEventListener = MyOrientationEventListener(activity)
         bitmapManager = BitmapManager(activity, preferenceManager)
         countdownManager = CountdownManager(activity, countdown, preferenceManager)
-        stateMachine = StateMachine(activity, getPhotoActionButtons(), arrayOf(settings, gallery, photoOrVideo, countdown), countdownManager, photoPreview)
+        stateMachine = StateMachine(activity, getPhotoActionButtons(), arrayOf(settings, gallery, photoOrVideo, countdown), countdownManager, photoPreview, videoPreview)
         permissionManager = PermissionManager(activity)
         cameraManager = CameraManager(activity, stateMachine, cameraPreview, orientationEventListener, previewSizeManager, bitmapManager, getPhotoActionButtons(), shutterFrame, preferenceManager)
         countdownManager.cameraManager = cameraManager
@@ -129,7 +129,7 @@ open class DFNightSelfiesMainFragment : Fragment(), View.OnClickListener {
     fun onKeyUp(keyCode: Int) = when (keyCode) {
         KeyEvent.KEYCODE_BACK -> {
             if (stateMachine.backFromAfterTaking())
-                cameraManager.restartPreview()
+                cameraManager.startPreview()
             else
                 activity.finish()
 
@@ -158,7 +158,7 @@ open class DFNightSelfiesMainFragment : Fragment(), View.OnClickListener {
 
             R.id.save -> {
                 bitmapManager.saveToFile(mediaScanner)
-                cameraManager.restartPreview()
+                cameraManager.startPreview()
             }
 
             R.id.share -> {
@@ -167,7 +167,7 @@ open class DFNightSelfiesMainFragment : Fragment(), View.OnClickListener {
             }
 
             R.id.delete -> {
-                cameraManager.restartPreview()
+                cameraManager.startPreview()
             }
 
             R.id.settings -> openSettings()

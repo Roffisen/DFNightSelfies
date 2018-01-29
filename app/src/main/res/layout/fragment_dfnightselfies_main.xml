@@ -63,6 +63,14 @@
         android:layout_gravity="center_horizontal|center_vertical"
         android:contentDescription="@string/preview" />
 
+    <!-- frame used to show the photo -->
+    <VideoView
+        android:id="@+id/videoPreview"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:layout_gravity="center_horizontal|center_vertical"
+        android:contentDescription="@string/preview" />
+
     <include layout="@layout/buttons" />
 
     <include layout="@layout/buttons_intent" />
