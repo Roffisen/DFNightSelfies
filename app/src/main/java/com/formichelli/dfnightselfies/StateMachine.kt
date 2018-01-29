@@ -7,14 +7,12 @@ import android.graphics.Bitmap
 import android.view.Surface
 import android.view.View
 import android.view.WindowManager
-import android.widget.ImageView
 import android.widget.LinearLayout
-import android.widget.VideoView
 import com.formichelli.dfnightselfies.util.CameraPreview
 import com.formichelli.dfnightselfies.util.CountdownManager
 import com.formichelli.dfnightselfies.util.PreviewManager
 
-class StateMachine(private val activity: Activity, private val photoActionButtons: LinearLayout, private val beforePhotoButtons: Array<View>, private val countdownManager: CountdownManager, private val photoPreview: ImageView, private val videoPreview: VideoView) {
+class StateMachine(private val activity: Activity, private val photoActionButtons: LinearLayout, private val beforePhotoButtons: Array<View>, private val countdownManager: CountdownManager, private val previewManager: PreviewManager) {
     private enum class State { BEFORE_TAKING, DURING_TIMER, WHILE_TAKING, AFTER_TAKING }
 
     private var currentState = State.BEFORE_TAKING
@@ -84,12 +82,12 @@ class StateMachine(private val activity: Activity, private val photoActionButton
 
     fun onPictureTaken(cameraSurface: CameraPreview, bitmap: Bitmap) {
         onPictureOrVideoTaken(cameraSurface)
-        PreviewManager.showPicturePreview(photoPreview, bitmap)
+        previewManager.showPicturePreview(bitmap)
     }
 
     fun onVideoTaken(cameraSurface: CameraPreview, videoOutputFile: String) {
         onPictureOrVideoTaken(cameraSurface)
-        PreviewManager.showVideoPreview(videoPreview, videoOutputFile)
+        previewManager.showVideoPreview(videoOutputFile)
     }
 
     private fun onPictureOrVideoTaken(cameraSurface: CameraPreview) {
@@ -100,9 +98,7 @@ class StateMachine(private val activity: Activity, private val photoActionButton
     fun onStartPreview(cameraSurface: CameraPreview) {
         currentState = State.BEFORE_TAKING
 
-        photoPreview.visibility = View.GONE
-        photoPreview.setImageResource(android.R.color.transparent)
-        videoPreview.visibility = View.GONE
+        previewManager.hidePreview()
         cameraSurface.visibility = View.VISIBLE
     }
 

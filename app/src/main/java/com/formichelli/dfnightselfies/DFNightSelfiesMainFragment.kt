@@ -23,6 +23,7 @@ import java.io.File
 
 open class DFNightSelfiesMainFragment : Fragment(), View.OnClickListener {
     private lateinit var preferenceManager: PreferenceManager
+    private lateinit var previewManager: PreviewManager
     protected lateinit var cameraManager: CameraManager
     private lateinit var countdownManager: CountdownManager
     private lateinit var stateMachine: StateMachine
@@ -40,18 +41,18 @@ open class DFNightSelfiesMainFragment : Fragment(), View.OnClickListener {
     override fun onActivityCreated(savedInstanceState: Bundle?) {
         super.onActivityCreated(savedInstanceState)
 
-        preferenceManager = PreferenceManager(activity)
+        mediaScanner = SingleMediaScanner(activity)
 
+        preferenceManager = PreferenceManager(activity)
+        bitmapManager = BitmapManager(activity, preferenceManager)
+        previewManager = PreviewManager(mediaScanner, bitmapManager, photoPreview, videoPreview)
         previewSizeManager = PreviewSizeManager(activity, preferenceManager, cameraPreview, photoPreview, videoPreview)
         orientationEventListener = MyOrientationEventListener(activity)
-        bitmapManager = BitmapManager(activity, preferenceManager)
         countdownManager = CountdownManager(activity, countdown, preferenceManager)
-        stateMachine = StateMachine(activity, getPhotoActionButtons(), arrayOf(settings, gallery, photoOrVideo, countdown), countdownManager, photoPreview, videoPreview)
+        stateMachine = StateMachine(activity, getPhotoActionButtons(), arrayOf(settings, gallery, photoOrVideo, countdown), countdownManager, previewManager)
         permissionManager = PermissionManager(activity)
         cameraManager = CameraManager(activity, stateMachine, cameraPreview, orientationEventListener, previewSizeManager, bitmapManager, getPhotoActionButtons(), shutterFrame, preferenceManager)
         countdownManager.cameraManager = cameraManager
-
-        mediaScanner = SingleMediaScanner(activity)
 
         setOnClickListeners()
     }
@@ -157,16 +158,17 @@ open class DFNightSelfiesMainFragment : Fragment(), View.OnClickListener {
             }
 
             R.id.save -> {
-                bitmapManager.saveToFile(mediaScanner)
+                previewManager.saveCurrentPreview()
                 cameraManager.startPreview()
             }
 
             R.id.share -> {
-                bitmapManager.saveToFile(mediaScanner)
+                previewManager.saveCurrentPreview()
                 startShareIntent(getShareUri())
             }
 
             R.id.delete -> {
+                previewManager.deleteCurrentPreview()
                 cameraManager.startPreview()
             }
 
@@ -183,9 +185,8 @@ open class DFNightSelfiesMainFragment : Fragment(), View.OnClickListener {
         }
     }
 
-    private fun setPhotoOrVideoIcon() {
-        photoOrVideo.setImageResource(if (preferenceManager.pictureOrVideo) R.drawable.video else R.drawable.camera)
-    }
+    private fun setPhotoOrVideoIcon() =
+            photoOrVideo.setImageResource(if (preferenceManager.pictureOrVideo) R.drawable.video else R.drawable.camera)
 
     private fun getShareUri() = FileProvider.getUriForFile(activity, BuildConfig.APPLICATION_ID + ".provider", File(mediaScanner.file?.absolutePath))
 
@@ -193,8 +194,9 @@ open class DFNightSelfiesMainFragment : Fragment(), View.OnClickListener {
 
     private fun openSettings() = startActivity(Intent(activity, DFNightSelfiesPreferences::class.java))
 
-    private fun startShareIntent(pictureUri: Uri) {
-        val shareIntent = Intent().setAction(Intent.ACTION_SEND).setType("image/*").putExtra(Intent.EXTRA_STREAM, pictureUri).putExtra(Intent.EXTRA_TEXT, "#dfnightselfies")
+    private fun startShareIntent(uri: Uri) {
+        val type = if (uri.path.endsWith(".jpeg")) "image/*" else "video/*"
+        val shareIntent = Intent().setAction(Intent.ACTION_SEND).setType(type).putExtra(Intent.EXTRA_STREAM, uri).putExtra(Intent.EXTRA_TEXT, "#dfnightselfies")
         startActivityForResult(Intent.createChooser(shareIntent, resources.getText(R.string.share)), 0)
         activity.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_SENSOR
     }

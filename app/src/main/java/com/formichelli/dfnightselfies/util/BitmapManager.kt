@@ -28,17 +28,15 @@ class BitmapManager(private val activity: Activity, private val preferenceManage
         }
     }
 
-    fun saveToFile(mediaScanner: SingleMediaScanner) {
-        val bitmap = bitmap ?: return
-
-        try {
-            val outFile = File(Util.getOutputFilePath(activity, true, preferenceManager.saveToGallery))
-            val fos = FileOutputStream(outFile)
-            bitmap.compress(Bitmap.CompressFormat.JPEG, 100, fos)
-            fos.close()
-            mediaScanner.scan(outFile)
-        } catch (e: IOException) {
-            Util.log(activity, "Error creating media file, check storage permissions")
-        }
-    }
+    fun saveToFile(bitmap: Bitmap, mediaScanner: SingleMediaScanner): File? =
+            try {
+                val outFile = File(Util.getOutputFilePath(activity, true, preferenceManager.saveToGallery))
+                val fos = FileOutputStream(outFile)
+                bitmap.compress(Bitmap.CompressFormat.JPEG, 100, fos)
+                fos.close()
+                outFile
+            } catch (e: IOException) {
+                Util.log(activity, "Error creating media file, check storage permissions")
+                null
+            }
 }

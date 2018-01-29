@@ -11,7 +11,10 @@ class SingleMediaScanner(context: Context) : MediaScannerConnectionClient {
     private val mediaScannerConnection: MediaScannerConnection = MediaScannerConnection(context, this)
     var file: File? = null
 
-    fun scan(fileToScan: File) {
+    fun scan(fileToScan: File?) {
+        if (fileToScan == null)
+            return
+
         mediaScannerConnection.connect()
         file = fileToScan
     }
