@@ -10,6 +10,7 @@ import android.widget.LinearLayout
 import com.formichelli.dfnightselfies.DFNightSelfiesMainFragment
 import com.formichelli.dfnightselfies.R
 import kotlinx.android.synthetic.main.buttons_intent.*
+import kotlinx.android.synthetic.main.fragment_dfnightselfies_main.*
 import java.io.ByteArrayOutputStream
 
 /**
@@ -17,6 +18,7 @@ import java.io.ByteArrayOutputStream
  */
 class DFNightSelfiesFromIntentFragment : DFNightSelfiesMainFragment() {
     override fun getPhotoActionButtons(): LinearLayout = intentButtons
+    override fun getBeforePhotoButtons() = arrayOf(settings, gallery, countdown)
 
     override fun onClick(v: View) {
         when (v.id) {

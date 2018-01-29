@@ -35,6 +35,8 @@ open class DFNightSelfiesMainFragment : Fragment(), View.OnClickListener {
 
     protected open fun getPhotoActionButtons(): LinearLayout = photoActionButtons
 
+    protected open fun getBeforePhotoButtons() = arrayOf(settings, gallery, photoOrVideo, countdown)
+
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View? =
             inflater.inflate(R.layout.fragment_dfnightselfies_main, container, false)
 
@@ -49,7 +51,7 @@ open class DFNightSelfiesMainFragment : Fragment(), View.OnClickListener {
         previewSizeManager = PreviewSizeManager(activity, preferenceManager, cameraPreview, photoPreview, videoPreview)
         orientationEventListener = MyOrientationEventListener(activity)
         countdownManager = CountdownManager(activity, countdown, preferenceManager)
-        stateMachine = StateMachine(activity, getPhotoActionButtons(), arrayOf(settings, gallery, photoOrVideo, countdown), countdownManager, previewManager)
+        stateMachine = StateMachine(activity, getPhotoActionButtons(), getBeforePhotoButtons(), countdownManager, previewManager)
         permissionManager = PermissionManager(activity)
         cameraManager = CameraManager(activity, stateMachine, cameraPreview, orientationEventListener, previewSizeManager, bitmapManager, getPhotoActionButtons(), shutterFrame, preferenceManager)
         countdownManager.cameraManager = cameraManager
@@ -139,7 +141,7 @@ open class DFNightSelfiesMainFragment : Fragment(), View.OnClickListener {
 
         KeyEvent.KEYCODE_VOLUME_DOWN, KeyEvent.KEYCODE_VOLUME_UP -> {
             if (preferenceManager.takeWithVolume)
-                cameraManager.takePictureOrVideo()
+                cameraManager.takePictureOrVideo(true)
             else if (getPhotoActionButtons().visibility != View.VISIBLE)
                 previewSizeManager.resizePreview(if (keyCode == KeyEvent.KEYCODE_VOLUME_DOWN) -1 else 1)
 
@@ -154,7 +156,12 @@ open class DFNightSelfiesMainFragment : Fragment(), View.OnClickListener {
     override fun onClick(v: View) {
         when (v.id) {
             view.id -> {
-                cameraManager.takePictureOrVideo()
+                countdownManager.cancel()
+                if (stateMachine.isDuringTimer()) {
+                    stateMachine.onTimerClick()
+                } else {
+                    cameraManager.takePictureOrVideo(true)
+                }
             }
 
             R.id.save -> {

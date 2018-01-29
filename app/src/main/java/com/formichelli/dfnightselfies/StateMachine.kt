@@ -15,6 +15,11 @@ import com.formichelli.dfnightselfies.util.PreviewManager
 class StateMachine(private val activity: Activity, private val photoActionButtons: LinearLayout, private val beforePhotoButtons: Array<View>, private val countdownManager: CountdownManager, private val previewManager: PreviewManager) {
     private enum class State { BEFORE_TAKING, DURING_TIMER, WHILE_TAKING, AFTER_TAKING }
 
+    init {
+        photoActionButtons.visibility = View.GONE
+        showBeforePhotoButtons(false)
+    }
+
     private var currentState = State.BEFORE_TAKING
         set(value) {
             field = value
@@ -72,7 +77,7 @@ class StateMachine(private val activity: Activity, private val photoActionButton
         }
     }
 
-    fun onTakePictureOrVideo(fromCountdown: Boolean) =
+    fun takingPicture(fromCountdown: Boolean) =
             if (currentState == State.BEFORE_TAKING || (currentState == State.DURING_TIMER && fromCountdown)) {
                 currentState = State.WHILE_TAKING
                 true
@@ -102,13 +107,15 @@ class StateMachine(private val activity: Activity, private val photoActionButton
         cameraSurface.visibility = View.VISIBLE
     }
 
-    fun startOrStopRecording() =
-            if (currentState == State.BEFORE_TAKING) {
+    fun startOrStopRecording(fromCountdown: Boolean) =
+            if (currentState == State.BEFORE_TAKING || (currentState == State.DURING_TIMER && fromCountdown)) {
                 currentState = State.WHILE_TAKING
                 true
-            } else {
+            } else if (currentState == State.WHILE_TAKING) {
                 currentState = State.AFTER_TAKING
                 false
+            } else {
+                null
             }
 
     fun backFromAfterTaking(): Boolean =
@@ -127,4 +134,6 @@ class StateMachine(private val activity: Activity, private val photoActionButton
                 currentState = State.DURING_TIMER
                 false
             }
+
+    fun isDuringTimer() = currentState == State.DURING_TIMER
 }

@@ -30,7 +30,7 @@ class CountdownManager(private val activity: Activity, private val countdown: Te
 
     fun onClick(stateMachine: StateMachine) {
         if (stateMachine.onTimerClick()) {
-            selfTimerFuture?.cancel(true)
+            cancel()
         } else {
             selfTimerFuture = selfTimerScheduler.scheduleAtFixedRate(CountDown(preferenceManager.countdownSeconds), 0, 1, TimeUnit.SECONDS)
         }
@@ -46,7 +46,7 @@ class CountdownManager(private val activity: Activity, private val countdown: Te
 
                     if (value < 0) {
                         selfTimerFuture?.cancel(true)
-                        cameraManager.takePicture(true)
+                        cameraManager.takePictureOrVideo(true)
                     }
                 } finally {
                 }

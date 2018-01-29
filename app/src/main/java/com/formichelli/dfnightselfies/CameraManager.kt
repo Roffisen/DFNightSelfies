@@ -107,21 +107,22 @@ class CameraManager(private val activity: Activity,
         camera.startPreview()
     }
 
-    fun takePictureOrVideo() {
+    fun takePictureOrVideo(fromCountdown: Boolean) {
         if (preferenceManager.pictureOrVideo) {
-            takePicture()
+            takePicture(fromCountdown)
         } else {
-            if (stateMachine.startOrStopRecording())
-                startVideoRecording()
-            else
-                stopVideoRecording()
+            when (stateMachine.startOrStopRecording(fromCountdown)) {
+                true -> startVideoRecording()
+                false -> stopVideoRecording()
+                null -> return
+            }
         }
     }
 
-    fun takePicture(fromCountdown: Boolean = false) {
+    private fun takePicture(fromCountdown: Boolean = false) {
         val camera = camera ?: return
 
-        if (!stateMachine.onTakePictureOrVideo(fromCountdown)) {
+        if (!stateMachine.takingPicture(fromCountdown)) {
             return
         }
 

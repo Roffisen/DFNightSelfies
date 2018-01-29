@@ -5,6 +5,7 @@ import android.app.Activity
 import android.content.SharedPreferences
 import android.preference.PreferenceManager
 import com.formichelli.dfnightselfies.R
+import com.formichelli.dfnightselfies.takephotointent.DFNightSelfiesFromIntentActivity
 
 @SuppressLint("ApplySharedPref")
 class PreferenceManager(private val activity: Activity) {
@@ -74,8 +75,14 @@ class PreferenceManager(private val activity: Activity) {
     val audioSamplingRate = 44100
 
     val pictureOrVideo: Boolean
-        get() =
-            sharedPreferences.getBoolean(activity.getString(R.string.picture_or_video_preference), true)
+        get() {
+            if (activity is DFNightSelfiesFromIntentActivity) {
+                // only allows photos from intent
+                return true
+            }
+
+            return sharedPreferences.getBoolean(activity.getString(R.string.picture_or_video_preference), true)
+        }
 
     fun switchPictureOrVideo() {
         sharedPreferences.edit().putBoolean(activity.getString(R.string.picture_or_video_preference), !pictureOrVideo).commit()
