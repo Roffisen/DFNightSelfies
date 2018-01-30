@@ -28,7 +28,7 @@ class BitmapManager(private val activity: Activity, private val preferenceManage
         }
     }
 
-    fun saveToFile(bitmap: Bitmap, mediaScanner: SingleMediaScanner): File? =
+    fun saveToFile(bitmap: Bitmap): File? =
             try {
                 val outFile = File(Util.getOutputFilePath(activity, true, preferenceManager.saveToGallery))
                 val fos = FileOutputStream(outFile)

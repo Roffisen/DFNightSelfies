@@ -141,7 +141,7 @@ open class DFNightSelfiesMainFragment : Fragment(), View.OnClickListener {
 
         KeyEvent.KEYCODE_VOLUME_DOWN, KeyEvent.KEYCODE_VOLUME_UP -> {
             if (preferenceManager.takeWithVolume)
-                cameraManager.takePictureOrVideo(true)
+                cameraManager.takePictureOrVideo(false)
             else if (getPhotoActionButtons().visibility != View.VISIBLE)
                 previewSizeManager.resizePreview(if (keyCode == KeyEvent.KEYCODE_VOLUME_DOWN) -1 else 1)
 
@@ -160,7 +160,7 @@ open class DFNightSelfiesMainFragment : Fragment(), View.OnClickListener {
                 if (stateMachine.isDuringTimer()) {
                     stateMachine.onTimerClick()
                 } else {
-                    cameraManager.takePictureOrVideo(true)
+                    cameraManager.takePictureOrVideo(false)
                 }
             }
 
@@ -202,7 +202,7 @@ open class DFNightSelfiesMainFragment : Fragment(), View.OnClickListener {
     private fun openSettings() = startActivity(Intent(activity, DFNightSelfiesPreferences::class.java))
 
     private fun startShareIntent(uri: Uri) {
-        val type = if (uri.path.endsWith(".jpeg")) "image/*" else "video/*"
+        val type = if (uri.path.endsWith(".jpeg")) "image/jpeg" else "video/mp4"
         val shareIntent = Intent().setAction(Intent.ACTION_SEND).setType(type).putExtra(Intent.EXTRA_STREAM, uri).putExtra(Intent.EXTRA_TEXT, "#dfnightselfies")
         startActivityForResult(Intent.createChooser(shareIntent, resources.getText(R.string.share)), 0)
         activity.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_SENSOR

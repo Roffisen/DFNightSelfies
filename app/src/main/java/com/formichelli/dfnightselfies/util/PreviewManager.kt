@@ -37,7 +37,7 @@ class PreviewManager(private val mediaScanner: SingleMediaScanner, private val b
 
     fun saveCurrentPreview() {
         if (currentBitmap != null) {
-            mediaScanner.scan(bitmapManager.saveToFile(currentBitmap!!, mediaScanner))
+            mediaScanner.scan(bitmapManager.saveToFile(currentBitmap!!))
         } else if (currentVideo != null) {
             mediaScanner.scan(currentVideo)
         }
