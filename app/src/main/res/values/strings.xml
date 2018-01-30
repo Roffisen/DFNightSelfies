@@ -13,7 +13,7 @@
     <string name="accept">Accept</string>
     <string name="countdown_string_format" translatable="false">%ds</string>
     <string name="shutter_sound_preference" translatable="false">shutter_sound_preference</string>
-    <string name="shutter_sound_preference_title">Camera shutter sound</string>
+    <string name="shutter_sound_preference_title">Sounds</string>
     <string name="countdown_preference" translatable="false">countdown_preference</string>
     <string name="countdown_preference_title">Timer duration</string>
     <string name="color_picker_preference" translatable="false">color_picker_preference</string>
