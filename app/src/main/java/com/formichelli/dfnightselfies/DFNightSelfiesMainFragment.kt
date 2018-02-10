@@ -200,7 +200,7 @@ open class DFNightSelfiesMainFragment : Fragment(), View.OnClickListener {
     private fun openSettings() = startActivity(Intent(activity, DFNightSelfiesPreferences::class.java))
 
     private fun startShareIntent(uri: Uri) {
-        val type = if (uri.path.endsWith(".jpeg")) "image/jpeg" else "video/mp4"
+        val type = if (uri.path.endsWith(".jpeg")) "image/*" else "video/mp4"
         val shareIntent = Intent().setAction(Intent.ACTION_SEND).setType(type).putExtra(Intent.EXTRA_STREAM, uri).putExtra(Intent.EXTRA_TEXT, "#dfnightselfies")
         startActivityForResult(Intent.createChooser(shareIntent, resources.getText(R.string.share)), 0)
         activity.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_SENSOR
