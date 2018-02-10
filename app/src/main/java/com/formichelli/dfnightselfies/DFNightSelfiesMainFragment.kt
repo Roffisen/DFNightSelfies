@@ -97,6 +97,10 @@ open class DFNightSelfiesMainFragment : Fragment(), View.OnClickListener {
         Util.setBackgroundColor(activity, listOf(shutterFrame, view), preferenceManager.color)
         countdownManager.resetText()
         orientationEventListener.enable()
+    }
+
+    override fun onResume() {
+        super.onResume()
 
         // The first time show a welcome dialog, the other times initialize camera as soon as the camera preview frame is ready
         showWelcomeDialogAndThen {
@@ -109,17 +113,11 @@ open class DFNightSelfiesMainFragment : Fragment(), View.OnClickListener {
     override fun onStop() {
         super.onStop()
 
+        countdownManager.cancel()
+
         cameraManager.release()
 
         orientationEventListener.disable()
-    }
-
-    override fun onDestroy() {
-        super.onDestroy()
-
-        cameraManager.release()
-
-        countdownManager.cancel()
     }
 
     override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<String>, grantResults: IntArray) = when {
@@ -193,7 +191,7 @@ open class DFNightSelfiesMainFragment : Fragment(), View.OnClickListener {
     }
 
     private fun setPhotoOrVideoIcon() =
-            photoOrVideo.setImageResource(if (preferenceManager.pictureOrVideo) R.drawable.video else R.drawable.camera)
+            photoOrVideo.setImageResource(if (preferenceManager.pictureOrVideo) R.drawable.camera else R.drawable.video)
 
     private fun getShareUri() = FileProvider.getUriForFile(activity, BuildConfig.APPLICATION_ID + ".provider", File(mediaScanner.file?.absolutePath))
 
